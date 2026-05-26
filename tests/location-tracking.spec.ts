@@ -94,6 +94,23 @@ async function emitPosition(
 }
 
 test.describe("Live GPS tracker", () => {
+  test("requests GPS on Enable even when Permissions API says denied", async ({ page }) => {
+    await mockGeolocation(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: {
+          query: async () => ({ state: "denied" }),
+        },
+      });
+    });
+    await startTrip(page);
+
+    await page.getByTestId("gps-enable-btn").click();
+    await expect(page.getByTestId("gps-permission")).toContainText("granted");
+    await expect(page.getByTestId("tracker-mode")).toContainText("live");
+  });
+
   test("handles GPS permission flow and enters live mode", async ({ page }) => {
     await mockGeolocation(page);
     await startTrip(page);

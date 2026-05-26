@@ -39,6 +39,15 @@ export function locationIsStale(
   return nowMs - sample.timestampMs > STALE_LOCATION_MS;
 }
 
+export type LocationAccessResult =
+  | { ok: true; sample: LocationSample }
+  | { ok: false; code: "denied" | "unavailable"; message: string };
+
+/** iOS Safari often mis-reports geolocation as denied before any prompt. */
+function permissionsApiSaysDenied(state: PermissionState): boolean {
+  return state === "denied";
+}
+
 export async function getPermissionState(): Promise<GPSPermissionState> {
   if (!supportsGeolocation()) {
     return "unsupported";
@@ -55,13 +64,64 @@ export async function getPermissionState(): Promise<GPSPermissionState> {
     if (status.state === "granted") {
       return "granted";
     }
-    if (status.state === "denied") {
-      return "denied";
+    if (permissionsApiSaysDenied(status.state)) {
+      // Do not trust "denied" here — only getCurrentPosition after a user tap is reliable on iOS.
+      return "prompt";
     }
     return "prompt";
   } catch {
     return "unknown";
   }
+}
+
+/** Call from a button click — triggers the native location prompt on iOS. */
+export function requestLocationAccess(): Promise<LocationAccessResult> {
+  return new Promise((resolve) => {
+    if (!supportsGeolocation()) {
+      resolve({
+        ok: false,
+        code: "unavailable",
+        message: "GPS is not supported on this browser.",
+      });
+      return;
+    }
+
+    if (!isSecureLocationContext()) {
+      resolve({
+        ok: false,
+        code: "unavailable",
+        message:
+          "GPS needs HTTPS on phone browsers. Open this app with a secure URL or localhost.",
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({ ok: true, sample: toLocationSample(position) });
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          resolve({
+            ok: false,
+            code: "denied",
+            message: "GPS permission denied. Allow location in Safari settings for this site.",
+          });
+          return;
+        }
+        resolve({
+          ok: false,
+          code: "unavailable",
+          message: "GPS unavailable. Check device location services.",
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 20_000,
+      },
+    );
+  });
 }
 
 export function startLocationWatch(

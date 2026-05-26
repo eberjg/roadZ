@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   getPermissionState,
+  requestLocationAccess,
   startLocationWatch,
   supportsGeolocation,
 } from "@/services/location/gpsClient";
@@ -93,17 +94,33 @@ export function LiveTripTracker({
       return;
     }
 
-    const permission = await getPermissionState();
-    if (permission === "denied") {
-      setTracking((previous) => applyPermissionState(previous, "denied"));
+    setTracking((previous) => ({
+      ...previous,
+      error: null,
+      permission: "prompt",
+    }));
+
+    const access = await requestLocationAccess();
+    if (!access.ok) {
+      setTracking((previous) => {
+        const next =
+          access.code === "denied"
+            ? applyPermissionState(previous, "denied")
+            : applyPermissionState(previous, "prompt");
+        return applyTrackingError(next, access.message);
+      });
       return;
     }
 
-    setTracking((previous) => ({
-      ...applyPermissionState(previous, "granted"),
-      mode: "live",
-      error: null,
-    }));
+    setTracking((previous) => {
+      const granted = applyPermissionState(previous, "granted");
+      const withSample = applyLocationUpdate({
+        previous: { ...granted, mode: "live", error: null },
+        sample: access.sample,
+        totalDistanceMiles,
+      });
+      return { ...withSample, mode: "live", error: null };
+    });
   };
 
   const useManual = () => {

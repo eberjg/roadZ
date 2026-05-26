@@ -38,6 +38,11 @@ export function GPSStatus({
       <p className="mt-2 text-lg text-zinc-700">
         Permission: <span data-testid="gps-permission">{tracking.permission}</span>
       </p>
+      {tracking.permission === "prompt" || tracking.permission === "unknown" ? (
+        <p className="mt-2 text-lg text-zinc-600">
+          Tap <strong>Enable GPS</strong> — Safari will ask to allow location for this site.
+        </p>
+      ) : null}
       {tracking.error ? (
         <p data-testid="gps-error" className="mt-2 text-lg font-semibold text-red-700">
           {tracking.error}
