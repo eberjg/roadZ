@@ -14,6 +14,8 @@ export type VehicleProfile = {
   /** Cached EPA MPG so estimates work offline after selection */
   highwayMpgOverride?: number;
   cityMpgOverride?: number;
+  /** Cached EPA combined MPG (official EPA average) */
+  combinedMpgOverride?: number;
   tankGallonsOverride?: number;
 };
 

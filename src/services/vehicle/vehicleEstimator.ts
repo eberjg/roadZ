@@ -17,17 +17,18 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
   if (epaVerified && profile.highwayMpgOverride) {
     const highwayMpg = profile.highwayMpgOverride;
     const cityMpg = profile.cityMpgOverride ?? highwayMpg;
-    const combinedMpg = Math.round((cityMpg + highwayMpg) / 2);
+    const combinedMpg =
+      profile.combinedMpgOverride ?? Math.round((cityMpg + highwayMpg) / 2);
     const tankGallons = profile.tankGallonsOverride ?? 15;
     const isElectric = profile.fuelType === "electric";
     const rangeMiles = isElectric
       ? 280
-      : Math.round(highwayMpg * tankGallons);
+      : Math.round(combinedMpg * tankGallons);
 
     const trimNote = profile.trimLabel ? ` · ${profile.trimLabel}` : "";
     const summary = isElectric
       ? `${profile.year} ${profile.make} ${profile.model}${trimNote} · EPA electric · ~${rangeMiles} mi range`
-      : `${profile.year} ${profile.make} ${profile.model}${trimNote} · EPA ${highwayMpg} MPG hwy / ${cityMpg} city`;
+      : `${profile.year} ${profile.make} ${profile.model}${trimNote} · EPA ${combinedMpg} avg MPG (${highwayMpg} hwy)`;
 
     return {
       highwayMpg,

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "@/components/ui/theme";
-import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
+import { pickDefaultTrim } from "@/services/vehicle/pickDefaultTrim";
 import { mapEpaDrivetrain, mapEpaFuelType } from "@/services/vehicle/epaMapper";
+import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
 import type { VehicleProfile } from "@/services/vehicle/types";
 
 type TrimOption = { id: string; label: string };
@@ -73,7 +74,15 @@ export function VehicleForm({
       try {
         const base = profileRef.current;
         const payload = await fetchCatalog<{
-          record: { year: number; make: string; model: string; trimLabel: string; driveRaw: string; fuelTypeRaw: string };
+          record: {
+            year: number;
+            make: string;
+            model: string;
+            trimLabel: string;
+            driveRaw: string;
+            fuelTypeRaw: string;
+            combinedMpg: number;
+          };
           entry: { tankGallons: number; highwayMpg: number; cityMpg: number };
         }>(`step=detail&id=${encodeURIComponent(trimId)}`);
 
@@ -88,6 +97,7 @@ export function VehicleForm({
           trimLabel: payload.record.trimLabel,
           highwayMpgOverride: payload.entry.highwayMpg,
           cityMpgOverride: payload.entry.cityMpg,
+          combinedMpgOverride: payload.record.combinedMpg,
           tankGallonsOverride: payload.entry.tankGallons,
           profileComplete: true,
         });
@@ -154,13 +164,16 @@ export function VehicleForm({
     )
       .then((payload) => {
         setTrims(payload.trims);
-        if (payload.trims.length === 1) {
-          void applyTrim(payload.trims[0].id);
-        } else if (
-          profileRef.current.epaVehicleId &&
-          payload.trims.some((t) => t.id === profileRef.current.epaVehicleId)
-        ) {
-          trimAppliedId.current = profileRef.current.epaVehicleId ?? null;
+        const defaultTrim = pickDefaultTrim(payload.trims);
+        if (defaultTrim) {
+          const saved = profileRef.current.epaVehicleId;
+          const savedStillValid =
+            saved && payload.trims.some((t) => t.id === saved);
+          if (savedStillValid) {
+            trimAppliedId.current = saved ?? null;
+          } else {
+            void applyTrim(defaultTrim.id);
+          }
         }
       })
       .finally(() => setLoading(null));
@@ -168,14 +181,14 @@ export function VehicleForm({
 
   const estimate = estimateVehicle(value);
   const costPer100 =
-    !estimate.isElectric && estimate.highwayMpg > 0 && gasPrice
-      ? ((100 / estimate.highwayMpg) * Number(gasPrice)).toFixed(2)
+    !estimate.isElectric && estimate.combinedMpg > 0 && gasPrice
+      ? ((100 / estimate.combinedMpg) * Number(gasPrice)).toFixed(2)
       : null;
 
   const summaryLine = `${value.year} ${value.make} ${value.model}`;
   const mpgLine = estimate.isElectric
     ? `~${estimate.rangeMiles} mi range`
-    : `${estimate.highwayMpg} MPG highway`;
+    : `${estimate.combinedMpg} MPG avg · ${estimate.tankGallons} gal`;
 
   return (
     <section data-testid="vehicle-form" className="rounded-2xl border border-white/10 bg-slate-950/60">
@@ -194,7 +207,7 @@ export function VehicleForm({
           </span>
           <span className="mt-0.5 block truncate text-sm font-semibold text-white">{summaryLine}</span>
           <span className="mt-0.5 flex flex-wrap items-center gap-2">
-            <span data-testid="vehicle-estimate-mpg" className="text-xs text-emerald-300">
+            <span data-testid="vehicle-form-summary-fuel" className="text-xs text-emerald-300">
               {mpgLine}
             </span>
             {estimate.epaVerified ? (
@@ -347,8 +360,10 @@ export function VehicleForm({
           >
             {!estimate.isElectric ? (
               <>
+                <StatPill label="Avg" value={`${estimate.combinedMpg} MPG`} testId="vehicle-estimate-mpg" />
                 <StatPill label="City" value={`${estimate.cityMpg}`} testId="vehicle-estimate-city-mpg" />
-                <StatPill label="Hwy" value={`${estimate.highwayMpg} MPG`} testId="vehicle-estimate-hwy-mpg" />
+                <StatPill label="Hwy" value={`${estimate.highwayMpg}`} testId="vehicle-estimate-hwy-mpg" />
+                <StatPill label="Tank" value={`${estimate.tankGallons} gal`} testId="vehicle-estimate-tank" />
                 <StatPill label="Range" value={`~${estimate.rangeMiles} mi`} testId="vehicle-estimate-range" />
               </>
             ) : (
@@ -368,6 +383,31 @@ export function VehicleForm({
                 step="0.01"
                 value={gasPrice ?? "3.85"}
                 onChange={(e) => onGasPriceChange(e.target.value)}
+                className={ui.input}
+              />
+            </Field>
+          ) : null}
+
+          {!estimate.isElectric ? (
+            <Field label="Tank size (gal) — adjust if yours differs">
+              <input
+                data-testid="input-tank-gallons"
+                type="number"
+                min="5"
+                max="50"
+                step="0.1"
+                value={value.tankGallonsOverride ?? estimate.tankGallons}
+                onChange={(e) => {
+                  const gallons = Number(e.target.value);
+                  if (!Number.isFinite(gallons) || gallons <= 0) {
+                    return;
+                  }
+                  onChange({
+                    ...value,
+                    tankGallonsOverride: gallons,
+                    profileComplete: true,
+                  });
+                }}
                 className={ui.input}
               />
             </Field>

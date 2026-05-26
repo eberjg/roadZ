@@ -1,5 +1,6 @@
 import type { EpaVehicleRecord } from "./epaApi";
 import type { VehicleDatabaseEntry, VehicleDrivetrain, VehicleFuelType } from "./types";
+import { resolveTankGallons } from "./tankCapacity";
 
 export function mapEpaFuelType(raw: string): VehicleFuelType {
   const value = raw.toLowerCase();
@@ -35,37 +36,27 @@ export function mapEpaDrivetrain(raw: string): VehicleDrivetrain | undefined {
   return undefined;
 }
 
-/** Estimate tank from EPA vehicle class when gallons are not published. */
+/** @deprecated Use resolveTankGallons — kept for tests */
 export function estimateTankGallons(vClass: string, fuelType: VehicleFuelType): number {
-  if (fuelType === "electric") {
-    return 0;
-  }
-  const value = vClass.toLowerCase();
-  if (value.includes("pickup") || value.includes("standard pickup")) {
-    return 26;
-  }
-  if (value.includes("suv") || value.includes("sport utility")) {
-    return 18;
-  }
-  if (value.includes("van") || value.includes("minivan")) {
-    return 20;
-  }
-  if (value.includes("compact")) {
-    return 13.5;
-  }
-  if (value.includes("midsize")) {
-    return 15.8;
-  }
-  if (value.includes("large") || value.includes("full")) {
-    return 19;
-  }
-  return 15;
+  return resolveTankGallons({
+    make: "",
+    model: "",
+    year: 2020,
+    vClass,
+    fuelType,
+  });
 }
 
 export function epaRecordToDatabaseEntry(record: EpaVehicleRecord): VehicleDatabaseEntry {
   const fuelType = mapEpaFuelType(record.fuelTypeRaw);
   const drivetrain = mapEpaDrivetrain(record.driveRaw);
-  const tankGallons = estimateTankGallons(record.vClass, fuelType);
+  const tankGallons = resolveTankGallons({
+    make: record.make,
+    model: record.model,
+    year: record.year,
+    vClass: record.vClass,
+    fuelType,
+  });
   const isElectric = fuelType === "electric";
 
   return {

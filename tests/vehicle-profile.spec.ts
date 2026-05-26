@@ -15,7 +15,7 @@ test.describe("Smart vehicle fuel estimate", () => {
 
   test("shows MPG in vehicle form summary", async ({ page }) => {
     await expect(page.getByTestId("mpg-estimate-card")).toBeAttached();
-    await expect(page.getByTestId("vehicle-estimate-mpg")).toContainText("32");
+    await expect(page.getByTestId("vehicle-form-summary-fuel")).toContainText("29");
   });
 });
 
@@ -34,7 +34,10 @@ test.describe("Vehicle profile wizard", () => {
     await page.getByTestId("wizard-vehicle-model").selectOption("NX 300");
     await page.getByTestId("wizard-vehicle-year").selectOption("2021");
     await expect(page.getByTestId("wizard-vehicle-trim")).not.toHaveValue("", { timeout: 10_000 });
-    await expect(page.getByTestId("vehicle-estimate-mpg")).toContainText("28", { timeout: 10_000 });
+    await page.getByTestId("vehicle-form-toggle").click();
+    await expect(page.getByTestId("vehicle-estimate-mpg")).toContainText("25", { timeout: 10_000 });
+    await expect(page.getByTestId("vehicle-estimate-tank")).toContainText("15.9");
+    await expect(page.getByTestId("vehicle-estimate-range")).toContainText("398");
     await page.getByTestId("wizard-vehicle-save").click();
     await expect(page.getByTestId("app-dashboard")).toBeVisible();
   });

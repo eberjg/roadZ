@@ -95,7 +95,7 @@ export function TripPlanner({
 
   function applyVehicleFuel(profile: VehicleProfile) {
     const estimate = estimateVehicle(profile);
-    setVehicleMpg(String(estimate.highwayMpg));
+    setVehicleMpg(String(estimate.combinedMpg));
     setGasPrice(String(estimate.suggestedGasPrice || 3.85));
   }
 
