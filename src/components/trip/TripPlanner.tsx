@@ -8,8 +8,9 @@ import { ui } from "@/components/ui/theme";
 import { requestLocationAccess, supportsGeolocation } from "@/services/location/gpsClient";
 import { setStoredPermissionState } from "@/services/preferences/appStorage";
 import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
-import { getVehicleProfile } from "@/services/vehicle/vehicleStorage";
-import { MPGEstimateCard } from "@/components/vehicle/MPGEstimateCard";
+import { getVehicleProfile, setVehicleProfile } from "@/services/vehicle/vehicleStorage";
+import { VehicleSelector } from "@/components/vehicle/VehicleSelector";
+import type { VehicleProfile } from "@/services/vehicle/types";
 import { extractUsZip } from "@/services/maps/placeResolver";
 import { calculateTrip } from "@/services/trip/calculateTrip";
 import { readMapHandoffFromSearch } from "@/services/trip/mapDeepLink";
@@ -82,12 +83,22 @@ export function TripPlanner({
   const [destinationPlace, setDestinationPlace] = useState(
     mapHandoff.destination ?? initialTrip?.destinationPlace ?? "",
   );
+  const [vehicleProfile, setVehicleProfileState] = useState<VehicleProfile>(() =>
+    getVehicleProfile(),
+  );
   const [vehicleMpg, setVehicleMpg] = useState(fuelDefaults.mpg);
   const [gasPrice, setGasPrice] = useState(fuelDefaults.gas);
+  const [showAdvancedFuel, setShowAdvancedFuel] = useState(false);
   const [result, setResult] = useState<TripResult | null>(initialResult ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+
+  function applyVehicleFuel(profile: VehicleProfile) {
+    const estimate = estimateVehicle(profile);
+    setVehicleMpg(String(estimate.highwayMpg));
+    setGasPrice(String(estimate.suggestedGasPrice || 3.85));
+  }
 
   async function fillStartFromCurrentLocation() {
     setError(null);
@@ -209,8 +220,7 @@ export function TripPlanner({
         <div>
           <h2 className={ui.h2}>Trip Planner</h2>
           <p className={`mt-2 ${ui.body}`}>
-            Use your location for start, pick addresses from suggestions, and we estimate fuel from
-            your vehicle.
+            Set start and destination — your vehicle MPG fills in automatically from EPA data.
           </p>
         </div>
         {activeTripSummary ? (
@@ -251,9 +261,28 @@ export function TripPlanner({
           onValueChange={setDestinationPlace}
         />
 
-        <MPGEstimateCard estimate={estimateVehicle(getVehicleProfile())} />
+        <VehicleSelector
+          compact
+          value={vehicleProfile}
+          onChange={(profile) => {
+            const next = { ...profile, profileComplete: true };
+            setVehicleProfileState(next);
+            setVehicleProfile(next);
+            applyVehicleFuel(next);
+          }}
+          showEstimate
+        />
 
-        <label className="block">
+        <button
+          type="button"
+          data-testid="trip-planner-advanced-fuel"
+          onClick={() => setShowAdvancedFuel((open) => !open)}
+          className="text-left text-sm font-semibold text-cyan-300"
+        >
+          {showAdvancedFuel ? "Hide" : "Adjust"} MPG & gas price
+        </button>
+
+        <label className={showAdvancedFuel ? "block" : "sr-only"}>
           <span className={ui.label}>Vehicle MPG</span>
           <input
             data-testid="input-vehicle-mpg"
@@ -264,10 +293,11 @@ export function TripPlanner({
             value={vehicleMpg}
             onChange={(event) => setVehicleMpg(event.target.value)}
             className={ui.input}
+            tabIndex={showAdvancedFuel ? 0 : -1}
           />
         </label>
 
-        <label className="block">
+        <label className={showAdvancedFuel ? "block" : "sr-only"}>
           <span className={ui.label}>Gas Price ($/gal)</span>
           <input
             data-testid="input-gas-price"
@@ -278,6 +308,7 @@ export function TripPlanner({
             value={gasPrice}
             onChange={(event) => setGasPrice(event.target.value)}
             className={ui.input}
+            tabIndex={showAdvancedFuel ? 0 : -1}
           />
         </label>
 

@@ -28,14 +28,34 @@ test.describe("Vehicle profile wizard", () => {
     await page.goto("/");
   });
 
-  test("estimates Lexus NX 300 highway MPG", async ({ page }) => {
+  test("estimates Lexus NX 300 highway MPG from EPA trim", async ({ page }) => {
     await expect(page.getByTestId("vehicle-profile-wizard")).toBeVisible();
     await page.getByTestId("wizard-vehicle-make").selectOption("Lexus");
     await page.getByTestId("wizard-vehicle-model").selectOption("NX 300");
-    await page.getByTestId("wizard-vehicle-year").fill("2021");
+    await page.getByTestId("wizard-vehicle-year").selectOption("2021");
+    await expect(page.getByTestId("wizard-vehicle-trim")).not.toHaveValue("", { timeout: 10_000 });
     await page.getByTestId("wizard-vehicle-next").click();
     await expect(page.getByTestId("vehicle-estimate-mpg")).toContainText("28 MPG");
     await page.getByTestId("wizard-vehicle-save").click();
     await expect(page.getByTestId("app-dashboard")).toBeVisible();
+  });
+
+  test("trip planner shows vehicle selector with EPA catalog", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("rc_onboarding_complete", "true");
+      window.localStorage.setItem(
+        "rc_vehicle_profile_v2",
+        JSON.stringify({
+          make: "Toyota",
+          model: "Camry",
+          year: 2018,
+          fuelType: "gas",
+          profileComplete: true,
+        }),
+      );
+    });
+    await page.goto("/");
+    await expect(page.getByTestId("vehicle-selector")).toBeVisible();
+    await expect(page.getByTestId("wizard-vehicle-trim")).toBeVisible();
   });
 });

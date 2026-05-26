@@ -8,6 +8,13 @@ export type VehicleProfile = {
   drivetrain?: VehicleDrivetrain;
   fuelType: VehicleFuelType;
   profileComplete: boolean;
+  /** EPA fueleconomy.gov vehicle id when trim was selected from catalog */
+  epaVehicleId?: string;
+  trimLabel?: string;
+  /** Cached EPA MPG so estimates work offline after selection */
+  highwayMpgOverride?: number;
+  cityMpgOverride?: number;
+  tankGallonsOverride?: number;
 };
 
 export type VehicleDatabaseEntry = {

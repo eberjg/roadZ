@@ -71,11 +71,12 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
 
   const width = 360;
   const height = routeMap.variant === "immersive" ? 400 : 220;
-  const padding = 16;
+  const shortTrip = route.distanceMiles < 30;
+  const padding = shortTrip ? 28 : 16;
 
   const project = ([lng, lat]: [number, number]) => {
-    const xRange = maxLng - minLng || 1;
-    const yRange = maxLat - minLat || 1;
+    const xRange = maxLng - minLng || 0.02;
+    const yRange = maxLat - minLat || 0.02;
     const x = padding + ((lng - minLng) / xRange) * (width - padding * 2);
     const y = height - padding - ((lat - minLat) / yRange) * (height - padding * 2);
     return `${x},${y}`;
@@ -252,6 +253,7 @@ function MapboxMap({
           followTrip,
           completedDistanceMiles,
           youMarker: youMarkerRef.current,
+          variant,
         });
       });
     }
@@ -285,11 +287,51 @@ function MapboxMap({
         followTrip,
         completedDistanceMiles,
         youMarker: youMarkerRef.current,
+        variant,
       });
     });
-  }, [mapView, route, followTrip, completedDistanceMiles]);
+  }, [mapView, route, followTrip, completedDistanceMiles, variant]);
 
   return <div ref={containerRef} className="h-full w-full" />;
+}
+
+function mapPadding(variant: RouteMapProps["variant"]) {
+  if (variant === "cockpit") {
+    return { top: 150, bottom: 230, left: 56, right: 56 };
+  }
+  if (variant === "immersive") {
+    return { top: 80, bottom: 120, left: 48, right: 48 };
+  }
+  return 48;
+}
+
+function maxZoomForRoute(
+  distanceMiles: number,
+  variant: RouteMapProps["variant"],
+  inProgress: boolean,
+) {
+  if (inProgress) {
+    return variant === "cockpit" ? 12.5 : 11;
+  }
+  if (variant === "cockpit") {
+    if (distanceMiles < 20) {
+      return 14;
+    }
+    if (distanceMiles < 80) {
+      return 12;
+    }
+    if (distanceMiles < 300) {
+      return 10;
+    }
+    return 8.5;
+  }
+  if (variant === "immersive") {
+    if (distanceMiles < 50) {
+      return 11;
+    }
+    return 8;
+  }
+  return 8;
 }
 
 function applyMapView(input: {
@@ -304,6 +346,7 @@ function applyMapView(input: {
   followTrip: boolean;
   completedDistanceMiles: number;
   youMarker: import("mapbox-gl").Marker | null;
+  variant?: RouteMapProps["variant"];
 }) {
   const traveledSource = input.map.getSource("route-traveled") as
     | import("mapbox-gl").GeoJSONSource
@@ -325,10 +368,23 @@ function applyMapView(input: {
     bounds.extend([input.mapView.you.lng, input.mapView.you.lat]);
   }
 
+  const inProgress = input.followTrip && input.completedDistanceMiles > 0;
+  const padding = mapPadding(input.variant);
+  const maxZoom = maxZoomForRoute(input.route.distanceMiles, input.variant, inProgress);
+
   input.map.fitBounds(bounds, {
-    padding: 48,
-    maxZoom: input.followTrip && input.completedDistanceMiles > 0 ? 11 : 8,
+    padding,
+    maxZoom,
+    duration: 700,
+    essential: true,
   });
+
+  if (input.variant === "cockpit" && !inProgress) {
+    input.map.easeTo({ pitch: 48, bearing: 0, duration: 700 });
+  } else if (input.variant === "cockpit" && inProgress) {
+    input.map.easeTo({ pitch: 55, duration: 500 });
+  }
+
   input.youMarker?.setLngLat([input.mapView.you.lng, input.mapView.you.lat]);
 }
 

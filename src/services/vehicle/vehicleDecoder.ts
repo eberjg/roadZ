@@ -7,7 +7,37 @@ export type DecodedVehicle = {
   matched: boolean;
 };
 
+function entryFromProfileOverrides(profile: VehicleProfile): VehicleDatabaseEntry | null {
+  if (!profile.highwayMpgOverride) {
+    return null;
+  }
+  const match = findDatabaseMatch(profile);
+  const base = match ?? fallbackByFuelType(profile.fuelType, profile.year);
+  return {
+    ...base,
+    id: profile.epaVehicleId ? `epa-${profile.epaVehicleId}` : base.id,
+    make: profile.make,
+    model: profile.model,
+    yearFrom: profile.year,
+    yearTo: profile.year,
+    highwayMpg: profile.highwayMpgOverride,
+    cityMpg: profile.cityMpgOverride ?? profile.highwayMpgOverride,
+    tankGallons: profile.tankGallonsOverride ?? base.tankGallons,
+    drivetrain: profile.drivetrain ?? base.drivetrain,
+    fuelType: profile.fuelType,
+  };
+}
+
 export function decodeVehicleProfile(profile: VehicleProfile): DecodedVehicle {
+  const overrideEntry = entryFromProfileOverrides(profile);
+  if (overrideEntry) {
+    return {
+      profile,
+      entry: overrideEntry,
+      matched: Boolean(profile.epaVehicleId || findDatabaseMatch(profile)),
+    };
+  }
+
   const match = findDatabaseMatch(profile);
   const entry = match ?? fallbackByFuelType(profile.fuelType, profile.year);
   return {
