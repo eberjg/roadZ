@@ -12,12 +12,45 @@ export const defaultVehicleProfile: VehicleProfile = {
 };
 
 export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
+  const epaVerified = Boolean(profile.epaVehicleId && profile.highwayMpgOverride);
+
+  if (epaVerified && profile.highwayMpgOverride) {
+    const highwayMpg = profile.highwayMpgOverride;
+    const cityMpg = profile.cityMpgOverride ?? highwayMpg;
+    const combinedMpg = Math.round((cityMpg + highwayMpg) / 2);
+    const tankGallons = profile.tankGallonsOverride ?? 15;
+    const isElectric = profile.fuelType === "electric";
+    const rangeMiles = isElectric
+      ? 280
+      : Math.round(highwayMpg * tankGallons);
+
+    const trimNote = profile.trimLabel ? ` · ${profile.trimLabel}` : "";
+    const summary = isElectric
+      ? `${profile.year} ${profile.make} ${profile.model}${trimNote} · EPA electric · ~${rangeMiles} mi range`
+      : `${profile.year} ${profile.make} ${profile.model}${trimNote} · EPA ${highwayMpg} MPG hwy / ${cityMpg} city`;
+
+    return {
+      highwayMpg,
+      cityMpg,
+      combinedMpg,
+      tankGallons,
+      rangeMiles,
+      suggestedGasPrice: isElectric ? 0 : DEFAULT_GAS_PRICE,
+      summary,
+      isElectric,
+      matchedDatabaseId: `epa-${profile.epaVehicleId}`,
+      epaVerified: true,
+      trimLabel: profile.trimLabel,
+    };
+  }
+
   const match = findDatabaseMatch(profile);
   const entry = match ?? fallbackByFuelType(profile.fuelType, profile.year);
 
   const isElectric = profile.fuelType === "electric" || entry.fuelType === "electric";
   const highwayMpg = entry.highwayMpg;
   const cityMpg = entry.cityMpg;
+  const combinedMpg = Math.round((cityMpg + highwayMpg) / 2);
   const tankGallons = entry.tankGallons;
   const rangeMiles = isElectric
     ? (entry.electricRangeMiles ?? 280)
@@ -25,17 +58,19 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
 
   const summary = isElectric
     ? `${profile.year} ${profile.make} ${profile.model} · ~${rangeMiles} mi range (electric)`
-    : `${profile.year} ${profile.make} ${profile.model} · ~${highwayMpg} MPG highway · ~${rangeMiles} mi range`;
+    : `${profile.year} ${profile.make} ${profile.model} · ~${highwayMpg} MPG highway (estimate — pick trim for EPA data)`;
 
   return {
     highwayMpg,
     cityMpg,
+    combinedMpg,
     tankGallons,
     rangeMiles,
     suggestedGasPrice: isElectric ? 0 : DEFAULT_GAS_PRICE,
     summary,
     isElectric,
     matchedDatabaseId: match?.id ?? null,
+    epaVerified: false,
   };
 }
 

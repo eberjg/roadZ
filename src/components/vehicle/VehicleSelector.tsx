@@ -36,7 +36,9 @@ export function VehicleSelector({
   compact = false,
 }: VehicleSelectorProps) {
   const [makes, setMakes] = useState<string[]>([]);
+  const [makeCount, setMakeCount] = useState(0);
   const [models, setModels] = useState<string[]>([]);
+  const [modelFilter, setModelFilter] = useState("");
   const [years, setYears] = useState<number[]>([]);
   const [trims, setTrims] = useState<TrimOption[]>([]);
   const [loading, setLoading] = useState<"models" | "years" | "trims" | "detail" | null>(null);
@@ -53,8 +55,11 @@ export function VehicleSelector({
   }, [value]);
 
   useEffect(() => {
-    void fetchCatalog<{ makes: string[] }>("step=makes")
-      .then((payload) => setMakes(payload.makes))
+    void fetchCatalog<{ makes: string[]; makeCount?: number }>("step=makes")
+      .then((payload) => {
+        setMakes(payload.makes);
+        setMakeCount(payload.makeCount ?? payload.makes.length);
+      })
       .catch(() => setCatalogError("Could not load vehicle makes."));
   }, []);
 
@@ -215,7 +220,9 @@ export function VehicleSelector({
   return (
     <div data-testid="vehicle-selector" className={compact ? "space-y-3" : "space-y-4"}>
       <p className={compact ? "text-xs text-zinc-400" : ui.body}>
-        Pick your car — roadZ uses EPA fuel-economy data when available.
+        {makeCount > 0
+          ? `${makeCount} brands from the official EPA database — pick trim for real MPG used while you drive.`
+          : "Pick your car — official EPA fuel economy when you select a trim."}
       </p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -227,6 +234,7 @@ export function VehicleSelector({
             onChange={(event) => {
               clearTrimSelection();
               modelsLoadedFor.current = null;
+              setModelFilter("");
               onChange({
                 ...value,
                 make: event.target.value,
@@ -246,8 +254,20 @@ export function VehicleSelector({
           </select>
         </label>
 
-        <label className="block">
-          <span className={ui.label}>Model</span>
+        <label className="col-span-2 block sm:col-span-1">
+          <span className={ui.label}>
+            Model {models.length > 0 ? `(${models.length})` : ""}
+          </span>
+          {models.length > 12 ? (
+            <input
+              data-testid="wizard-vehicle-model-filter"
+              type="search"
+              placeholder="Search models…"
+              value={modelFilter}
+              onChange={(event) => setModelFilter(event.target.value)}
+              className={`${ui.input} mb-2`}
+            />
+          ) : null}
           <select
             data-testid="wizard-vehicle-model"
             value={value.model}
@@ -266,11 +286,17 @@ export function VehicleSelector({
             }}
             className={ui.input}
           >
-            {models.map((model) => (
-              <option key={model} value={model}>
-                {model}
-              </option>
-            ))}
+            {models
+              .filter((model) =>
+                modelFilter.trim()
+                  ? model.toLowerCase().includes(modelFilter.trim().toLowerCase())
+                  : true,
+              )
+              .map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
           </select>
         </label>
 

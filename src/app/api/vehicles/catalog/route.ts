@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { listModelsForMake, VEHICLE_DATABASE } from "@/services/vehicle/vehicleDatabase";
-import { EPA_VEHICLE_MAKES } from "@/services/vehicle/epaMakes";
+import { getEpaCatalogMeta, getEpaCatalogMakes, getEpaModelsForMake } from "@/services/vehicle/epaCatalog";
 import {
   epaRecordToDatabaseEntry,
   mapEpaFuelType,
@@ -9,27 +8,18 @@ import { fetchEpaMenu, fetchEpaVehicleById } from "@/services/vehicle/epaApi";
 
 export const dynamic = "force-dynamic";
 
-function mergeUnique(values: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const value of values) {
-    const key = value.trim();
-    if (!key || seen.has(key.toLowerCase())) {
-      continue;
-    }
-    seen.add(key.toLowerCase());
-    out.push(key);
-  }
-  return out.sort((a, b) => a.localeCompare(b));
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const step = searchParams.get("step") ?? "makes";
 
   try {
     if (step === "makes") {
-      return NextResponse.json({ makes: [...EPA_VEHICLE_MAKES] });
+      const meta = getEpaCatalogMeta();
+      return NextResponse.json({
+        ...meta,
+        makes: getEpaCatalogMakes(),
+        catalogSource: "epa-vehicle-database",
+      });
     }
 
     const make = searchParams.get("make")?.trim() ?? "";
@@ -38,24 +28,18 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "make is required" }, { status: 400 });
       }
 
-      let epaModels: string[] = [];
-      try {
-        const items = await fetchEpaMenu(
-          `/vehicle/menu/model?make=${encodeURIComponent(make)}`,
-        );
-        epaModels = items.map((item) => item.text);
-      } catch {
-        epaModels = [];
+      const models = getEpaModelsForMake(make);
+      if (models.length === 0) {
+        return NextResponse.json({
+          models: make.toLowerCase() === "other" ? ["Sedan", "SUV", "Truck"] : [],
+          source: "none",
+        });
       }
 
-      const localModels =
-        make.toLowerCase() === "other"
-          ? ["Sedan", "SUV", "Truck"]
-          : listModelsForMake(make);
-
       return NextResponse.json({
-        models: mergeUnique([...epaModels, ...localModels]),
-        source: epaModels.length > 0 ? "epa+local" : "local",
+        models,
+        source: "epa-catalog",
+        count: models.length,
       });
     }
 
@@ -65,34 +49,17 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "make and model are required" }, { status: 400 });
       }
 
-      let years: number[] = [];
-      try {
-        const items = await fetchEpaMenu(
-          `/vehicle/menu/year?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`,
-        );
-        years = items.map((item) => Number(item.value)).filter((y) => Number.isFinite(y));
-      } catch {
-        years = [];
-      }
+      const items = await fetchEpaMenu(
+        `/vehicle/menu/year?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`,
+      );
+      let years = items.map((item) => Number(item.value)).filter((y) => Number.isFinite(y));
 
       if (years.length === 0) {
-        const local = VEHICLE_DATABASE.find(
-          (entry) =>
-            entry.make.toLowerCase() === make.toLowerCase() &&
-            entry.model.toLowerCase() === model.toLowerCase(),
-        );
-        if (local) {
-          years = Array.from(
-            { length: local.yearTo - local.yearFrom + 1 },
-            (_, index) => local.yearTo - index,
-          );
-        } else {
-          const current = new Date().getFullYear();
-          years = Array.from({ length: 12 }, (_, index) => current - index);
-        }
+        const current = new Date().getFullYear();
+        years = Array.from({ length: 15 }, (_, index) => current - index);
       }
 
-      return NextResponse.json({ years: years.sort((a, b) => b - a) });
+      return NextResponse.json({ years: years.sort((a, b) => b - a), source: "epa-live" });
     }
 
     const year = Number(searchParams.get("year"));
@@ -110,6 +77,7 @@ export async function GET(request: Request) {
           id: item.value,
           label: item.text,
         })),
+        source: "epa-live",
       });
     }
 
@@ -131,7 +99,16 @@ export async function GET(request: Request) {
         record,
         entry,
         fuelType,
-        summary: `${record.year} ${record.make} ${record.model} · ${record.highwayMpg} MPG highway`,
+        dataSource: "epa-official",
+        summary: `${record.year} ${record.make} ${record.model}`,
+        fuelEfficiency: {
+          cityMpg: record.cityMpg,
+          highwayMpg: record.highwayMpg,
+          combinedMpg: record.combinedMpg,
+          fuelType: record.fuelTypeRaw,
+          drive: record.driveRaw,
+          vClass: record.vClass,
+        },
       });
     }
 

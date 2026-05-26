@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:epa-catalog": "node scripts/build-epa-catalog.mjs"
   },
   "dependencies": {
     "mapbox-gl": "^3.24.0",

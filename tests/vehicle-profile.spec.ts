@@ -40,6 +40,15 @@ test.describe("Vehicle profile wizard", () => {
     await expect(page.getByTestId("app-dashboard")).toBeVisible();
   });
 
+  test("catalog returns full EPA make list", async ({ request }) => {
+    const response = await request.get("/api/vehicles/catalog?step=makes");
+    const payload = (await response.json()) as { makes: string[]; makeCount: number };
+    expect(payload.makeCount).toBeGreaterThan(100);
+    expect(payload.makes).toContain("Toyota");
+    expect(payload.makes).toContain("Lexus");
+    expect(payload.makes).toContain("Ford");
+  });
+
   test("trip planner shows vehicle selector with EPA catalog", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("rc_onboarding_complete", "true");

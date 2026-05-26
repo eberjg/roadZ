@@ -37,12 +37,16 @@ export type VehicleDatabaseEntry = {
 export type VehicleEstimate = {
   highwayMpg: number;
   cityMpg: number;
+  combinedMpg: number;
   tankGallons: number;
   rangeMiles: number;
   suggestedGasPrice: number;
   summary: string;
   isElectric: boolean;
   matchedDatabaseId: string | null;
+  /** True when MPG comes from an EPA trim the user selected */
+  epaVerified: boolean;
+  trimLabel?: string;
 };
 
 export type VehicleEfficiencyProfile = {
