@@ -14,16 +14,9 @@ export async function startCockpitTrip(page: Page, options?: { skipGoto?: boolea
   await expect(page.getByTestId("cockpit-layout")).toBeVisible({ timeout: 15_000 });
 }
 
-export async function expandCockpitSheet(page: Page) {
-  const toggle = page.getByTestId("cockpit-sheet-toggle");
-  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
-    await toggle.click();
-  }
-}
-
 export async function openCockpitTab(page: Page, tab: CockpitTab) {
   await page.getByTestId(`cockpit-tab-${tab}`).click();
-  await expandCockpitSheet(page);
+  await expect(page.getByTestId("cockpit-detail-panel")).toBeVisible({ timeout: 5_000 });
 }
 
 /** Ops progress slider is only enabled in manual tracker mode. */

@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { CockpitLayout } from "./CockpitLayout";
-import { TripStatusStrip } from "./TripStatusStrip";
-import { OperationalHUD } from "./OperationalHUD";
-import { AdaptiveBottomSheet } from "./AdaptiveBottomSheet";
-import { DashboardSettings } from "@/components/settings/DashboardSettings";
+import { CockpitMapShell } from "./CockpitMapShell";
 import { FuelPanel } from "@/components/fuel/FuelPanel";
 import { FuelWarnings } from "@/components/fuel/FuelWarnings";
 import { StopRecommendation } from "@/components/fuel/StopRecommendation";
@@ -21,7 +17,9 @@ import {
   getSafetyPreferences,
   subscribeSafetyStorage,
 } from "@/services/safety/contactManager";
+import { loadRelayState } from "@/services/safety/safetyEngine";
 import { defaultSafetyPreferences, type TripBroadcastContext } from "@/services/safety/types";
+import { DEFAULT_AVERAGE_SPEED_MPH } from "@/services/fuel/fuelMath";
 import { buildFuelIntelligence } from "@/services/fuel/fuelService";
 import { buildOperationalState } from "@/services/operations/tripStateEngine";
 import type { LocationSample } from "@/services/location/types";
@@ -30,7 +28,6 @@ import { getVehicleProfile } from "@/services/vehicle/vehicleStorage";
 import { buildLiveTripIntelligence } from "@/services/vehicle/vehicleIntelligence";
 import type { TripInput, TripResult } from "@/services/trip/types";
 import type { WeatherIntelligence } from "@/services/weather/types";
-import { ui } from "@/components/ui/theme";
 
 type OperationalCockpitProps = {
   trip: {
@@ -66,7 +63,6 @@ export function OperationalCockpit({
   onOpenPlanner,
 }: OperationalCockpitProps) {
   const [weather, setWeather] = useState<WeatherIntelligence | null>(null);
-
   const vehicleProfile = useMemo(() => getVehicleProfile(), []);
 
   const { fuelIntelligence, operational, vehicleIntelligence } = useMemo(() => {
@@ -127,7 +123,6 @@ export function OperationalCockpit({
       return;
     }
     let cancelled = false;
-
     async function loadWeather() {
       try {
         const response = await fetch("/api/weather", {
@@ -155,7 +150,6 @@ export function OperationalCockpit({
         }
       }
     }
-
     void loadWeather();
     return () => {
       cancelled = true;
@@ -170,8 +164,6 @@ export function OperationalCockpit({
     operational.progress.drivingSessionHours,
   ]);
 
-  const remainingMiles = operational.progress.remainingDistanceMiles;
-  const liveActive = showLiveData && trackerMode === "live";
   const tripId = `${trip.input.startZip}-${trip.input.destinationZip}`;
   const stopCount = fuelIntelligence.plannedStops.filter(
     (stop) => stop.mileMarker <= completedDistanceMiles,
@@ -181,6 +173,7 @@ export function OperationalCockpit({
     getSafetyPreferences,
     () => defaultSafetyPreferences,
   );
+  const relayState = loadRelayState(tripId);
 
   const broadcastContext: TripBroadcastContext = useMemo(() => {
     const progressPercent =
@@ -194,13 +187,13 @@ export function OperationalCockpit({
       driverName: preferences.driverDisplayName,
       startPlace: trip.input.startPlace,
       destinationPlace: trip.input.destinationPlace,
-      currentPlaceLabel: `${progressPercent}% between ${trip.input.startPlace} and ${trip.input.destinationPlace}`,
+      currentPlaceLabel: `${progressPercent}% along route`,
       totalDistanceMiles: trip.route.distanceMiles,
       completedDistanceMiles,
       etaLabel: trip.route.etaLabel,
       fuelRangeMiles: vehicleIntelligence.live.remainingRangeMiles,
       weatherRisk: weather?.risk.level ?? "NORMAL",
-      weatherSummary: weather?.current.summary ?? "Conditions stable",
+      weatherSummary: weather?.current.summary ?? "Scattered clouds",
       fatigueStatus: operational.fatigue.status,
       operationalStatus: operational.status,
       nextStopName: fuelIntelligence.recommendedNextStop?.station.name ?? null,
@@ -226,135 +219,121 @@ export function OperationalCockpit({
     gpsSampleAgeMs: null,
   });
 
+  const nextStop = fuelIntelligence.recommendedNextStop;
+  const speedMph =
+    showLiveData && trackerMode === "live"
+      ? Math.max(DEFAULT_AVERAGE_SPEED_MPH, completedDistanceMiles > 0 ? 62 : 0)
+      : DEFAULT_AVERAGE_SPEED_MPH;
+
+  const shellData = {
+    destination: trip.input.destinationPlace,
+    completedMiles: completedDistanceMiles,
+    totalMiles: trip.route.distanceMiles,
+    etaLabel: trip.route.etaLabel,
+    remainingMiles: operational.progress.remainingDistanceMiles,
+    efficiencyScore: vehicleIntelligence.live.efficiencyScore,
+    liveMpg: vehicleIntelligence.live.effectiveMpg,
+    fuelRangeMiles: vehicleIntelligence.live.remainingRangeMiles,
+    liveActive: showLiveData && trackerMode === "live",
+    speedMph,
+    driveTimeLabel: operational.progress.drivingSessionDurationLabel,
+    temperatureF: weather?.current.temperatureF ?? 78,
+    weatherSummary: weather?.current.summary ?? "Loading conditions…",
+    weatherRisk: weather?.risk.level ?? "NORMAL",
+    operationalStatus: operational.status,
+    fatigueStatus: operational.fatigue.status,
+    alertCount: operational.alerts.length,
+    nextStopName: nextStop?.station.name ?? null,
+    nextStopCity: nextStop?.station.city ?? "",
+    nextStopMiles: nextStop?.stopDistanceMiles ?? 0,
+    nextStopEta: nextStop?.estimatedTimingLabel ?? "—",
+    gasPrice: trip.input.gasPrice,
+    relayEnabled: preferences.relayEnabled,
+    familySentAtMs: relayState.lastBroadcast?.sentAtMs ?? null,
+    safetyRelayOn: preferences.relayEnabled,
+  };
+
   return (
-    <CockpitLayout
-      tripStrip={
-        <TripStatusStrip
-          startPlace={trip.input.startPlace}
-          destinationPlace={trip.input.destinationPlace}
-          completedMiles={completedDistanceMiles}
-          totalMiles={trip.route.distanceMiles}
-          etaLabel={trip.route.etaLabel}
-          liveActive={liveActive}
-          onOpenPlanner={onOpenPlanner}
-        />
-      }
+    <CockpitMapShell
+      data={shellData}
+      tripRestored={tripRestored}
+      showLiveData={showLiveData}
+      onStartNewTrip={onStartNewTrip}
+      onOpenPlanner={onOpenPlanner}
       map={
         <RouteMap
-          variant="immersive"
+          variant="cockpit"
           route={trip.route}
           completedDistanceMiles={completedDistanceMiles}
           youPosition={mapYouPosition}
           followTrip
         />
       }
-      hud={
-        <OperationalHUD
-          intelligence={vehicleIntelligence}
-          operational={operational}
-          fuelIntelligence={fuelIntelligence}
-          weather={weather}
-          remainingMiles={remainingMiles}
-          etaLabel={trip.route.etaLabel}
-          safetyRelayOn={preferences.relayEnabled}
-          safetyEmergency={emergency.active}
-        />
-      }
-      bottomSheet={
-        <div className="flex flex-col">
-          {!showLiveData ? (
-            <p
-              data-testid="static-mode-banner"
-              className={`mx-3 mb-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm ${ui.body}`}
-            >
-              Static mode — turn on live data for GPS and weather updates.
+      missionPanel={
+        <div className="space-y-3">
+          <DriverCopilotBanner
+            startPlace={trip.input.startPlace}
+            destinationPlace={trip.input.destinationPlace}
+            completedDistanceMiles={completedDistanceMiles}
+            totalDistanceMiles={trip.route.distanceMiles}
+            liveDataEnabled={showLiveData}
+            tripRestored={tripRestored}
+          />
+          <div data-testid="vehicle-intelligence-panel" className="rounded-xl border border-white/10 bg-black/40 p-3">
+            <p className="text-sm font-semibold text-white">Vehicle intelligence</p>
+            <p data-testid="live-effective-mpg" className="mt-1 text-cyan-300">
+              {vehicleIntelligence.live.effectiveMpg} MPG effective
+            </p>
+            <p data-testid="live-efficiency-score" className="text-sm text-zinc-400">
+              Score {vehicleIntelligence.live.efficiencyScore}
+            </p>
+          </div>
+          {emergency.active ? (
+            <p data-testid="safety-emergency-warning" className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+              {emergency.message}
             </p>
           ) : null}
-          <DashboardSettings
-            hasActiveTrip
-            tripRestored={tripRestored}
-            onStartNewTrip={onStartNewTrip}
-            compact
-          />
-        <AdaptiveBottomSheet
-          summaryLine={vehicleIntelligence.summary}
-          missionPanel={
-            <div className="space-y-3">
-              <DriverCopilotBanner
-                startPlace={trip.input.startPlace}
-                destinationPlace={trip.input.destinationPlace}
-                completedDistanceMiles={completedDistanceMiles}
-                totalDistanceMiles={trip.route.distanceMiles}
-                liveDataEnabled={showLiveData}
-                tripRestored={tripRestored}
-              />
-              <div data-testid="vehicle-intelligence-panel" className={ui.panelNested}>
-                <p className={ui.h3}>Vehicle intelligence</p>
-                <p data-testid="live-effective-mpg" className={`mt-2 ${ui.value}`}>
-                  {vehicleIntelligence.live.effectiveMpg} MPG effective
-                </p>
-                <p data-testid="live-efficiency-score" className={ui.body}>
-                  Efficiency score {vehicleIntelligence.live.efficiencyScore}
-                </p>
-                {vehicleIntelligence.live.adjustments.length > 0 ? (
-                  <ul
-                    data-testid="mpg-adjustments"
-                    className={`mt-2 list-disc pl-5 ${ui.bodyMuted}`}
-                  >
-                    {vehicleIntelligence.live.adjustments.map((item) => (
-                      <li key={item.factor}>
-                        {item.factor}: {item.impactPercent}%
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            </div>
-          }
-          fuelPanel={
-            <div className="space-y-3">
-              <FuelPanel intelligence={fuelIntelligence} />
-              <FuelWarnings intelligence={fuelIntelligence} />
-              <StopRecommendation intelligence={fuelIntelligence} />
-              <TripSegments intelligence={fuelIntelligence} />
-            </div>
-          }
-          opsPanel={
-            <div className="space-y-3">
-              <OperationalDashboard
-                route={trip.route}
-                fuelIntelligence={fuelIntelligence}
-                completedDistanceMiles={completedDistanceMiles}
-                onProgressChange={onProgressChange}
-                manualProgressEnabled={trackerMode === "manual" || !showLiveData}
-              />
-              <EnvironmentalDashboard
-                tripInput={trip.input}
-                route={trip.route}
-                fuelIntelligence={fuelIntelligence}
-                completedDistanceMiles={completedDistanceMiles}
-                liveUpdatesEnabled={showLiveData}
-              />
-            </div>
-          }
-          safetyPanel={
-            <FamilySafetyPanel tripId={tripId} broadcastContext={broadcastContext} />
-          }
-          gpsPanel={
-            <LiveTripTracker
-              totalDistanceMiles={trip.route.distanceMiles}
-              startPlace={trip.input.startPlace}
-              destinationPlace={trip.input.destinationPlace}
-              liveDataEnabled={showLiveData}
-              initialProgressMiles={completedDistanceMiles}
-              onAutoProgress={onAutoProgress}
-              onModeChange={onModeChange}
-              onLocationSample={onLocationSample}
-            />
-          }
-        />
         </div>
       }
+      fuelPanel={
+        <div className="space-y-3">
+          <FuelPanel intelligence={fuelIntelligence} />
+          <FuelWarnings intelligence={fuelIntelligence} />
+          <StopRecommendation intelligence={fuelIntelligence} />
+          <TripSegments intelligence={fuelIntelligence} />
+        </div>
+      }
+      opsPanel={
+        <div className="space-y-3">
+          <OperationalDashboard
+            route={trip.route}
+            fuelIntelligence={fuelIntelligence}
+            completedDistanceMiles={completedDistanceMiles}
+            onProgressChange={onProgressChange}
+            manualProgressEnabled={trackerMode === "manual" || !showLiveData}
+          />
+          <EnvironmentalDashboard
+            tripInput={trip.input}
+            route={trip.route}
+            fuelIntelligence={fuelIntelligence}
+            completedDistanceMiles={completedDistanceMiles}
+            liveUpdatesEnabled={showLiveData}
+          />
+        </div>
+      }
+      gpsPanel={
+        <LiveTripTracker
+          totalDistanceMiles={trip.route.distanceMiles}
+          startPlace={trip.input.startPlace}
+          destinationPlace={trip.input.destinationPlace}
+          liveDataEnabled={showLiveData}
+          initialProgressMiles={completedDistanceMiles}
+          onAutoProgress={onAutoProgress}
+          onModeChange={onModeChange}
+          onLocationSample={onLocationSample}
+        />
+      }
+      safetyPanel={<FamilySafetyPanel tripId={tripId} broadcastContext={broadcastContext} />}
     />
   );
 }

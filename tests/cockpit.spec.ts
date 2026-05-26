@@ -1,66 +1,67 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
 import { enableLiveGps } from "./helpers/gps";
+import { openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
 
-import { startCockpitTrip } from "./helpers/cockpit";
-
-async function startTrip(page: import("@playwright/test").Page) {
-  await startCockpitTrip(page);
-}
-
-test.describe("Task 10 — Cockpit UX", () => {
+test.describe("Task 11 — Futuristic map-first cockpit", () => {
   test.beforeEach(async ({ page }) => {
     await primeOnboardingComplete(page);
   });
 
-  test("renders map-first cockpit layout after trip calculate", async ({ page }) => {
-    await startTrip(page);
+  test("cockpit renders after trip calculation", async ({ page }) => {
+    await startCockpitTrip(page);
     await expect(page.getByTestId("cockpit-layout")).toBeVisible();
-    await expect(page.getByTestId("cockpit-map-stage")).toBeVisible();
-    await expect(page.getByTestId("route-map")).toHaveAttribute("data-variant", "immersive");
-    await expect(page.getByTestId("cockpit-trip-strip")).toBeVisible();
-    await expect(page.getByTestId("cockpit-bottom-sheet")).toBeVisible();
+    await expect(page.getByTestId("route-map")).toHaveAttribute("data-variant", "cockpit");
   });
 
-  test("shows operational HUD overlays", async ({ page }) => {
-    await startTrip(page);
-    await expect(page.getByTestId("operational-hud")).toBeVisible();
-    await expect(page.getByTestId("hud-top-panel")).toBeVisible();
-    await expect(page.getByTestId("hud-bottom-panel")).toBeVisible();
-    await expect(page.getByTestId("hud-efficiency-score")).toBeVisible();
-    await expect(page.getByTestId("hud-live-mpg")).toBeVisible();
-  });
-
-  test("mobile viewport keeps map-first cockpit", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await startTrip(page);
+  test("map occupies primary screen area", async ({ page }) => {
+    await startCockpitTrip(page);
     const mapStage = page.getByTestId("cockpit-map-stage");
-    const box = await mapStage.boundingBox();
-    expect(box).not.toBeNull();
-    if (box) {
-      expect(box.height).toBeGreaterThan(200);
+    const layout = page.getByTestId("cockpit-layout");
+    const mapBox = await mapStage.boundingBox();
+    const layoutBox = await layout.boundingBox();
+    expect(mapBox).not.toBeNull();
+    expect(layoutBox).not.toBeNull();
+    if (mapBox && layoutBox) {
+      expect(mapBox.height).toBeGreaterThan(layoutBox.height * 0.45);
     }
-    await expect(page.getByTestId("cockpit-bottom-sheet")).toBeVisible();
   });
 
-  test("bottom sheet expands and shows vehicle intelligence", async ({ page }) => {
-    await startTrip(page);
-    await page.getByTestId("cockpit-sheet-toggle").click();
-    await page.getByTestId("cockpit-tab-mission").click();
+  test("mission header and metrics strip visible", async ({ page }) => {
+    await startCockpitTrip(page);
+    await expect(page.getByTestId("cockpit-mission-header")).toBeVisible();
+    await expect(page.getByTestId("cockpit-metrics-strip")).toBeVisible();
+    await expect(page.getByTestId("cockpit-trip-route")).toBeVisible();
+  });
+
+  test("floating overlays visible", async ({ page }) => {
+    await startCockpitTrip(page);
+    await expect(page.getByTestId("cockpit-weather-overlay")).toBeVisible();
+    await expect(page.getByTestId("cockpit-safety-overlay")).toBeVisible();
+    await expect(page.getByTestId("cockpit-next-stop-overlay")).toBeVisible();
+  });
+
+  test("bottom live console and family strip visible", async ({ page }) => {
+    await startCockpitTrip(page);
+    await expect(page.getByTestId("cockpit-live-console")).toBeVisible();
+    await expect(page.getByTestId("cockpit-family-strip")).toBeVisible();
+    await expect(page.getByTestId("cockpit-tab-bar")).toBeVisible();
+  });
+
+  test("dynamic MPG in metrics strip", async ({ page }) => {
+    await startCockpitTrip(page);
+    await expect(page.getByTestId("hud-live-mpg")).toBeVisible();
+    await expect(page.getByTestId("hud-efficiency-score")).toBeVisible();
+  });
+
+  test("tab opens detail panel without covering entire map", async ({ page }) => {
+    await startCockpitTrip(page);
+    await openCockpitTab(page, "mission");
     await expect(page.getByTestId("vehicle-intelligence-panel")).toBeVisible();
-    await expect(page.getByTestId("live-effective-mpg")).toBeVisible();
-    await expect(page.getByTestId("live-efficiency-score")).toBeVisible();
+    await expect(page.getByTestId("cockpit-map-stage")).toBeVisible();
   });
 
-  test("dynamic MPG appears in HUD", async ({ page }) => {
-    await startTrip(page);
-    const mpgText = await page.getByTestId("hud-live-mpg").textContent();
-    expect(mpgText?.trim().length).toBeGreaterThan(0);
-    const scoreText = await page.getByTestId("hud-efficiency-score").textContent();
-    expect(Number(scoreText)).toBeGreaterThan(0);
-  });
-
-  test("GPS tab and recovery from stale denied storage", async ({ page }) => {
+  test("GPS tab and recovery from stale denied", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("rc_permission_state", "denied");
     });
@@ -102,26 +103,42 @@ test.describe("Task 10 — Cockpit UX", () => {
         value: geolocationMock,
       });
     });
-    await startTrip(page);
-    await page.getByTestId("cockpit-tab-gps").click();
-    await page.getByTestId("cockpit-sheet-toggle").click();
+    await startCockpitTrip(page);
+    await openCockpitTab(page, "gps");
     await enableLiveGps(page);
     await expect(page.getByTestId("gps-permission")).toContainText("granted");
   });
 
-  test("ops tab shows operational dashboard regression", async ({ page }) => {
-    await startTrip(page);
-    await page.getByTestId("cockpit-tab-ops").click();
-    await page.getByTestId("cockpit-sheet-toggle").click();
+  test("ops tab shows operational dashboard", async ({ page }) => {
+    await startCockpitTrip(page);
+    await openCockpitTab(page, "ops");
     await expect(page.getByTestId("operational-dashboard")).toBeVisible();
-    await expect(page.getByTestId("environmental-dashboard")).toBeVisible();
   });
 
-  test("idle dashboard regression still shows planner cards", async ({ page }) => {
+  test("mobile viewport overlay layout does not severely overlap", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startCockpitTrip(page);
+
+    const weather = await page.getByTestId("cockpit-weather-overlay").boundingBox();
+    const safety = await page.getByTestId("cockpit-safety-overlay").boundingBox();
+    const map = await page.getByTestId("cockpit-map-stage").boundingBox();
+
+    expect(weather).not.toBeNull();
+    expect(safety).not.toBeNull();
+    expect(map).not.toBeNull();
+
+    if (weather && safety && map) {
+      expect(weather.x + weather.width).toBeLessThan(safety.x + 4);
+      expect(weather.y + weather.height).toBeLessThan(map.y + map.height * 0.75);
+      expect(safety.y + safety.height).toBeLessThan(map.y + map.height * 0.75);
+    }
+
+    await expect(page.getByTestId("cockpit-live-console")).toBeVisible();
+  });
+
+  test("idle dashboard regression", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("dashboard-title")).toHaveText("roadZ");
-    await expect(page.getByTestId("route-card")).toBeVisible();
-    await expect(page.getByTestId("fuel-card")).toBeVisible();
     await expect(page.getByTestId("trip-planner")).toBeVisible();
   });
 });

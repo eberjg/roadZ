@@ -13,8 +13,8 @@ type RouteMapProps = {
   completedDistanceMiles?: number;
   youPosition?: LngLat | null;
   followTrip?: boolean;
-  /** Immersive fills parent — used in cockpit map stage */
-  variant?: "default" | "immersive";
+  /** Immersive/cockpit fills parent — used in map-first cockpit */
+  variant?: "default" | "immersive" | "cockpit";
 };
 
 function lineFeature(coordinates: [number, number][]) {
@@ -98,24 +98,35 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
       role="img"
       aria-label="Trip navigation map"
     >
-      <rect width={width} height={height} fill="#0f172a" />
+      <defs>
+        <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0c4a6e" />
+          <stop offset="100%" stopColor="#020617" />
+        </linearGradient>
+        <filter id="neon">
+          <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#22d3ee" floodOpacity="0.9" />
+        </filter>
+      </defs>
+      <rect width={width} height={height} fill="url(#routeGlow)" />
       {traveledPath ? (
         <path
           d={`M ${traveledPath}`}
           fill="none"
-          stroke="#38bdf8"
-          strokeWidth="5"
+          stroke="#22d3ee"
+          strokeWidth={routeMap.variant === "cockpit" ? 6 : 5}
           strokeLinecap="round"
+          filter={routeMap.variant === "cockpit" ? "url(#neon)" : undefined}
         />
       ) : null}
       {remainingPath ? (
         <path
           d={`M ${remainingPath}`}
           fill="none"
-          stroke="#64748b"
+          stroke="#475569"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray="8 6"
+          opacity="0.85"
         />
       ) : null}
       <circle cx={startX} cy={startY} r="6" fill="#22c55e" />
@@ -138,6 +149,7 @@ function MapboxMap({
   completedDistanceMiles = 0,
   youPosition = null,
   followTrip = true,
+  variant = "immersive",
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
@@ -191,13 +203,14 @@ function MapboxMap({
           data: lineFeature([]),
         });
 
+        const isCockpit = variant === "cockpit" || variant === "immersive";
         map.addLayer({
           id: "route-remaining",
           type: "line",
           source: "route-remaining",
           paint: {
-            "line-color": "#64748b",
-            "line-width": 4,
+            "line-color": "#475569",
+            "line-width": isCockpit ? 5 : 4,
             "line-dasharray": [2, 2],
           },
         });
@@ -206,8 +219,9 @@ function MapboxMap({
           type: "line",
           source: "route-traveled",
           paint: {
-            "line-color": "#38bdf8",
-            "line-width": 6,
+            "line-color": isCockpit ? "#22d3ee" : "#38bdf8",
+            "line-width": isCockpit ? 7 : 6,
+            "line-blur": isCockpit ? 0.5 : 0,
           },
         });
 
@@ -226,7 +240,7 @@ function MapboxMap({
         const youEl = document.createElement("div");
         youEl.setAttribute("data-testid", "route-map-you");
         youEl.className =
-          "h-4 w-4 rounded-full bg-sky-400 ring-4 ring-sky-400/40 ring-offset-2 ring-offset-slate-900";
+          "h-5 w-5 rotate-45 rounded-sm bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)] ring-2 ring-white/80";
         youMarkerRef.current = new mapboxgl.Marker({ element: youEl }).setLngLat([0, 0]).addTo(map);
 
         readyRef.current = true;
@@ -320,7 +334,7 @@ function applyMapView(input: {
 
 export function RouteMap(props: RouteMapProps) {
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim());
-  const immersive = props.variant === "immersive";
+  const immersive = props.variant === "immersive" || props.variant === "cockpit";
   const you =
     props.youPosition ??
     resolveYouAreHere({
@@ -332,8 +346,8 @@ export function RouteMap(props: RouteMapProps) {
     return (
       <section
         data-testid="route-map"
-        data-variant="immersive"
-        className="h-full w-full overflow-hidden bg-zinc-950"
+        data-variant={props.variant === "cockpit" ? "cockpit" : "immersive"}
+        className="h-full w-full overflow-hidden bg-[#020617]"
       >
         <p className="sr-only" data-testid="route-map-position-label">
           You at {you.lat.toFixed(2)}, {you.lng.toFixed(2)}

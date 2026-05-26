@@ -36,8 +36,9 @@ For every task:
 7. Run Playwright
 8. Fix failures
 9. Re-test
-10. Summarize changes
-11. Stop and wait
+10. Deploy to production (see DEPLOYMENT)
+11. Summarize changes
+12. Stop and wait
 
 # TECH STACK
 
@@ -54,7 +55,24 @@ Testing:
 
 Deployment:
 
-* Vercel
+* Railway — auto-deploy on push to `main`
+* Production URL: `https://roadz-production.up.railway.app`
+
+# DEPLOYMENT (REQUIRED)
+
+After every completed task (when code changed):
+
+1. Ensure lint, build, and Playwright all pass.
+2. Stage and commit all task-related changes with a clear message.
+3. Push to `origin main` — do not leave finished work only on disk.
+4. Confirm deploy: `curl -sS https://roadz-production.up.railway.app/api/health` returns `"status":"ok"` (or `degraded` with known cause).
+5. Report commit hash and that production was updated.
+
+Do not ask the user to deploy manually unless push is blocked (auth, permissions, or remote failure).
+
+If push fails: fix the blocker, retry, and document what blocked deploy.
+
+Uncommitted task work is NOT done.
 
 # UX RULES
 
@@ -76,6 +94,8 @@ A task is complete ONLY if:
 * Playwright passes
 * no TypeScript errors
 * no regressions
+* changes committed and pushed to `main`
+* production health check verified
 * summary generated
 
 If validation fails:
@@ -98,15 +118,8 @@ Phase 1 Features:
 
 # CURRENT TASK
 
-Task 1:
-Create a minimal dashboard UI with:
-
-* title
-* route card
-* fuel card
-* stop recommendation card
-
-Add Playwright verification.
+Task 11 (in progress / deploy):
+Map-first futuristic GPS cockpit — match mockup; deploy after validation.
 
 # REQUIRED OUTPUT
 
