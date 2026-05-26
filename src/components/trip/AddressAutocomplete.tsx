@@ -10,6 +10,9 @@ type AddressAutocompleteProps = {
   onValueChange: (value: string) => void;
   placeholder: string;
   testId: string;
+  showUseCurrentLocation?: boolean;
+  onUseCurrentLocation?: () => void;
+  locationLoading?: boolean;
 };
 
 export function AddressAutocomplete({
@@ -18,6 +21,9 @@ export function AddressAutocomplete({
   onValueChange,
   placeholder,
   testId,
+  showUseCurrentLocation = false,
+  onUseCurrentLocation,
+  locationLoading = false,
 }: AddressAutocompleteProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -113,6 +119,18 @@ export function AddressAutocomplete({
           className={ui.input}
         />
       </label>
+
+      {showUseCurrentLocation ? (
+        <button
+          type="button"
+          data-testid={`${testId}-use-location`}
+          disabled={locationLoading}
+          onClick={() => onUseCurrentLocation?.()}
+          className={`mt-2 ${ui.btnSecondary}`}
+        >
+          {locationLoading ? "Getting your location…" : "Use my current location"}
+        </button>
+      ) : null}
 
       {isLoading ? (
         <p className={`mt-1 ${ui.bodyMuted}`} data-testid={`${testId}-loading`}>

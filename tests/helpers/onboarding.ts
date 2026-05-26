@@ -22,6 +22,7 @@ export async function resetOnboardingState(page: Page) {
     window.localStorage.removeItem("rc_permission_state");
     window.localStorage.removeItem("rc_dashboard_preferences");
     window.localStorage.removeItem("rc_active_trip_session");
+    window.localStorage.removeItem("rc_vehicle_profile");
   });
 }
 

@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { ErrorState } from "@/components/map/ErrorState";
 import { LoadingState } from "@/components/map/LoadingState";
 import { ui } from "@/components/ui/theme";
+import { requestLocationAccess, supportsGeolocation } from "@/services/location/gpsClient";
+import { setStoredPermissionState } from "@/services/preferences/appStorage";
+import { estimateFuelFromVehicle } from "@/services/fuel/vehicleEstimate";
+import { getVehicleProfile } from "@/services/preferences/vehicleProfileStorage";
 import { extractUsZip } from "@/services/maps/placeResolver";
 import { calculateTrip } from "@/services/trip/calculateTrip";
 import { readMapHandoffFromSearch } from "@/services/trip/mapDeepLink";
@@ -12,6 +16,7 @@ import type { RouteData } from "@/services/maps/types";
 import type { TripInput, TripResult } from "@/services/trip/types";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { TripResults } from "./TripResults";
+import { VehicleProfilePanel } from "./VehicleProfilePanel";
 
 type TripPlannerProps = {
   initialTrip?: TripInput | null;
@@ -45,6 +50,20 @@ function buildTripInput(
   };
 }
 
+function initialFuelValues(initialTrip?: TripInput | null) {
+  if (initialTrip?.vehicleMpg && initialTrip.gasPrice) {
+    return {
+      mpg: String(initialTrip.vehicleMpg),
+      gas: String(initialTrip.gasPrice),
+    };
+  }
+  const estimate = estimateFuelFromVehicle(getVehicleProfile());
+  return {
+    mpg: String(estimate.estimatedMpg),
+    gas: String(estimate.suggestedGasPrice),
+  };
+}
+
 export function TripPlanner({
   initialTrip,
   initialResult,
@@ -56,21 +75,51 @@ export function TripPlanner({
 }: TripPlannerProps) {
   const searchParams = useSearchParams();
   const mapHandoff = readMapHandoffFromSearch(searchParams.toString());
+  const fuelDefaults = initialFuelValues(initialTrip);
   const [startPlace, setStartPlace] = useState(
     mapHandoff.start ?? initialTrip?.startPlace ?? "",
   );
   const [destinationPlace, setDestinationPlace] = useState(
     mapHandoff.destination ?? initialTrip?.destinationPlace ?? "",
   );
-  const [vehicleMpg, setVehicleMpg] = useState(
-    initialTrip?.vehicleMpg ? String(initialTrip.vehicleMpg) : "",
-  );
-  const [gasPrice, setGasPrice] = useState(
-    initialTrip?.gasPrice ? String(initialTrip.gasPrice) : "",
-  );
+  const [vehicleMpg, setVehicleMpg] = useState(fuelDefaults.mpg);
+  const [gasPrice, setGasPrice] = useState(fuelDefaults.gas);
   const [result, setResult] = useState<TripResult | null>(initialResult ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  async function fillStartFromCurrentLocation() {
+    setError(null);
+    if (!supportsGeolocation()) {
+      setError("GPS is not supported on this browser.");
+      return;
+    }
+
+    setLocationLoading(true);
+    try {
+      const access = await requestLocationAccess();
+      if (!access.ok) {
+        setError(access.message);
+        return;
+      }
+
+      setStoredPermissionState("granted");
+      const response = await fetch(
+        `/api/geocode/reverse?lat=${access.sample.latitude}&lng=${access.sample.longitude}`,
+      );
+      const payload = (await response.json()) as { label?: string; error?: string };
+      if (!response.ok || !payload.label) {
+        setError(payload.error ?? "Could not resolve your location to an address.");
+        return;
+      }
+      setStartPlace(payload.label);
+    } catch {
+      setError("Could not get your current location. Try again or type an address.");
+    } finally {
+      setLocationLoading(false);
+    }
+  }
 
   async function handleCalculate() {
     setError(null);
@@ -160,7 +209,8 @@ export function TripPlanner({
         <div>
           <h2 className={ui.h2}>Trip Planner</h2>
           <p className={`mt-2 ${ui.body}`}>
-            Start typing — we suggest addresses as you go. Paste from Maps works too.
+            Use your location for start, pick addresses from suggestions, and we estimate fuel from
+            your vehicle.
           </p>
         </div>
         {activeTripSummary ? (
@@ -188,6 +238,9 @@ export function TripPlanner({
           placeholder="e.g. 123 Main St, Miami FL or 33301"
           value={startPlace}
           onValueChange={setStartPlace}
+          showUseCurrentLocation
+          locationLoading={locationLoading}
+          onUseCurrentLocation={() => void fillStartFromCurrentLocation()}
         />
 
         <AddressAutocomplete
@@ -196,6 +249,13 @@ export function TripPlanner({
           placeholder="e.g. 1600 Broadway, Tacoma WA or 98402"
           value={destinationPlace}
           onValueChange={setDestinationPlace}
+        />
+
+        <VehicleProfilePanel
+          mpgValue={vehicleMpg}
+          gasPriceValue={gasPrice}
+          onMpgChange={setVehicleMpg}
+          onGasPriceChange={setGasPrice}
         />
 
         <label className="block">

@@ -83,6 +83,35 @@ export async function suggestPlaces(query: string, limit = 5): Promise<PlaceSugg
     });
 }
 
+export async function reverseGeocode(lat: number, lng: number): Promise<LngLat & { label: string }> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new MapboxClientError("Mapbox token is not configured.", "UNAVAILABLE");
+  }
+
+  const url =
+    `${MAPBOX_BASE}/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+    `?types=address,place,postcode&limit=1&access_token=${token}`;
+
+  const response = await fetchWithTimeout(url);
+  if (!response.ok) {
+    throw new MapboxClientError(`Reverse geocoding failed (${response.status}).`, "UNAVAILABLE");
+  }
+
+  const data = (await response.json()) as MapboxGeocodeResponse;
+  const feature = data.features?.[0];
+  if (!feature?.center) {
+    throw new MapboxClientError("Could not resolve this location to an address.", "MALFORMED");
+  }
+
+  const [featureLng, featureLat] = feature.center;
+  return {
+    lng: featureLng,
+    lat: featureLat,
+    label: feature.place_name ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+  };
+}
+
 export async function geocodePlace(query: string): Promise<LngLat & { label: string }> {
   const token = getAccessToken();
   if (!token) {

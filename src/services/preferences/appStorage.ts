@@ -1,6 +1,7 @@
 import type { GPSPermissionState } from "@/services/location/types";
 
 import { clearTripSession } from "./tripSessionStorage";
+import { clearVehicleProfile } from "./vehicleProfileStorage";
 
 const KEYS = {
   onboardingComplete: "rc_onboarding_complete",
@@ -141,6 +142,7 @@ export function clearAppStorage(): void {
   window.localStorage.removeItem(KEYS.permissionState);
   window.localStorage.removeItem(KEYS.preferences);
   clearTripSession();
+  clearVehicleProfile();
   notifyStorageChange();
 }
 

@@ -14,10 +14,12 @@ import { OperationalDashboard } from "@/components/operations/OperationalDashboa
 import { EnvironmentalDashboard } from "@/components/weather/EnvironmentalDashboard";
 import { RouteMap } from "@/components/map/RouteMap";
 import { RouteSummary } from "@/components/map/RouteSummary";
+import { DriverCopilotBanner } from "@/components/trip/DriverCopilotBanner";
 import { TripPlanner } from "@/components/trip/TripPlanner";
 import {
   defaultDashboardPreferences,
   getDashboardPreferences,
+  getStoredPermissionState,
   subscribeAppStorage,
 } from "@/services/preferences/appStorage";
 import {
@@ -244,15 +246,28 @@ export function HomeDashboard() {
             onRequestCollapse={() => setPlannerExpanded(false)}
             onCalculated={(input, result, route) => {
               const nextTrip = { input, result, route };
+              const permission = getStoredPermissionState();
+              const startLive = showLiveData && permission === "granted";
               setSessionCleared(false);
               setTripOverride(nextTrip);
               setProgressOverride(0);
-              setModeOverride("manual");
+              setModeOverride(startLive ? "live" : "manual");
               setPlannerExpanded(false);
-              persistTrip(nextTrip, 0, "manual");
+              persistTrip(nextTrip, 0, startLive ? "live" : "manual");
             }}
           />
         </Suspense>
+
+        {trip && !plannerExpanded ? (
+          <DriverCopilotBanner
+            startPlace={trip.input.startPlace}
+            destinationPlace={trip.input.destinationPlace}
+            completedDistanceMiles={completedDistanceMiles}
+            totalDistanceMiles={trip.route.distanceMiles}
+            liveDataEnabled={showLiveData}
+            tripRestored={tripRestored}
+          />
+        ) : null}
 
         {!showLiveData && trip ? (
           <p
