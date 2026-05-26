@@ -17,6 +17,21 @@ function normalizeKey(make: string, model: string): string {
   return `${make.trim().toLowerCase()}|${model.trim().toLowerCase()}`;
 }
 
+/** Fuel left in tank when the low-fuel light typically comes on. */
+export const FUEL_RESERVE_GALLONS = 2.5;
+
+/**
+ * Gallons the driver usually has available for planning (not always a full fill).
+ * Example: 15.9 gal factory tank → ~11 gal typical fill before refueling.
+ */
+export function defaultPlanningFillGallons(tankCapacityGallons: number): number {
+  if (tankCapacityGallons <= 0) {
+    return 0;
+  }
+  const usable = Math.max(6, tankCapacityGallons - FUEL_RESERVE_GALLONS);
+  return Math.max(6, Math.round(usable * 0.82));
+}
+
 /**
  * Resolve fuel tank gallons: curated DB → make/model table → vehicle class heuristic.
  * EPA fueleconomy.gov does not expose tank size in the API.

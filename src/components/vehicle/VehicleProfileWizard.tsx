@@ -34,7 +34,7 @@ export function VehicleProfileWizard({ onComplete }: VehicleProfileWizardProps) 
         <section className={ui.panel}>
           <h2 className={ui.h2}>Your vehicle</h2>
           <p className={`mt-2 text-sm ${ui.bodyMuted}`}>
-            EPA fuel data powers MPG, range, and live efficiency while you drive.
+            EPA MPG plus your usual fill amount. Live fuel updates from how you actually drive.
           </p>
 
           <div className="mt-6 space-y-4">

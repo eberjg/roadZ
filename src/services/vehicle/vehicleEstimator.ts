@@ -1,3 +1,4 @@
+import { resolvePlanningFillGallons, resolveTankCapacityGallons } from "./planningFuel";
 import { fallbackByFuelType, findDatabaseMatch } from "./vehicleDatabase";
 import type { VehicleEstimate, VehicleProfile } from "./types";
 
@@ -19,11 +20,12 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
     const cityMpg = profile.cityMpgOverride ?? highwayMpg;
     const combinedMpg =
       profile.combinedMpgOverride ?? Math.round((cityMpg + highwayMpg) / 2);
-    const tankGallons = profile.tankGallonsOverride ?? 15;
+    const tankCapacityGallons = resolveTankCapacityGallons(profile, 15);
+    const planningFillGallons = resolvePlanningFillGallons(profile, tankCapacityGallons);
     const isElectric = profile.fuelType === "electric";
     const rangeMiles = isElectric
       ? 280
-      : Math.round(combinedMpg * tankGallons);
+      : Math.round(combinedMpg * planningFillGallons);
 
     const trimNote = profile.trimLabel ? ` · ${profile.trimLabel}` : "";
     const summary = isElectric
@@ -34,7 +36,9 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
       highwayMpg,
       cityMpg,
       combinedMpg,
-      tankGallons,
+      tankGallons: planningFillGallons,
+      tankCapacityGallons,
+      planningFillGallons,
       rangeMiles,
       suggestedGasPrice: isElectric ? 0 : DEFAULT_GAS_PRICE,
       summary,
@@ -52,10 +56,11 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
   const highwayMpg = entry.highwayMpg;
   const cityMpg = entry.cityMpg;
   const combinedMpg = Math.round((cityMpg + highwayMpg) / 2);
-  const tankGallons = entry.tankGallons;
+  const tankCapacityGallons = entry.tankGallons;
+  const planningFillGallons = resolvePlanningFillGallons(profile, tankCapacityGallons);
   const rangeMiles = isElectric
     ? (entry.electricRangeMiles ?? 280)
-    : Math.round(highwayMpg * tankGallons);
+    : Math.round(combinedMpg * planningFillGallons);
 
   const summary = isElectric
     ? `${profile.year} ${profile.make} ${profile.model} · ~${rangeMiles} mi range (electric)`
@@ -65,7 +70,9 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
     highwayMpg,
     cityMpg,
     combinedMpg,
-    tankGallons,
+    tankGallons: planningFillGallons,
+    tankCapacityGallons,
+    planningFillGallons,
     rangeMiles,
     suggestedGasPrice: isElectric ? 0 : DEFAULT_GAS_PRICE,
     summary,

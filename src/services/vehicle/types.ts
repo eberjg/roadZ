@@ -16,6 +16,11 @@ export type VehicleProfile = {
   cityMpgOverride?: number;
   /** Cached EPA combined MPG (official EPA average) */
   combinedMpgOverride?: number;
+  /** OEM full tank (EPA trim + curated specs). */
+  tankCapacityGallons?: number;
+  /** Gallons you usually drive with — powers range and fuel co-pilot. */
+  planningFillGallons?: number;
+  /** @deprecated Use planningFillGallons */
   tankGallonsOverride?: number;
 };
 
@@ -41,6 +46,10 @@ export type VehicleEstimate = {
   cityMpg: number;
   combinedMpg: number;
   tankGallons: number;
+  /** Factory full-tank capacity (EPA does not publish this; from OEM table). */
+  tankCapacityGallons: number;
+  /** Usual fill used for range and live fuel assistant. */
+  planningFillGallons: number;
   rangeMiles: number;
   suggestedGasPrice: number;
   summary: string;

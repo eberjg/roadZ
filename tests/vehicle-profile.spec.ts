@@ -36,8 +36,9 @@ test.describe("Vehicle profile wizard", () => {
     await expect(page.getByTestId("wizard-vehicle-trim")).not.toHaveValue("", { timeout: 10_000 });
     await page.getByTestId("vehicle-form-toggle").click();
     await expect(page.getByTestId("vehicle-estimate-mpg")).toContainText("25", { timeout: 10_000 });
-    await expect(page.getByTestId("vehicle-estimate-tank")).toContainText("15.9");
-    await expect(page.getByTestId("vehicle-estimate-range")).toContainText("398");
+    await expect(page.getByTestId("vehicle-estimate-tank-capacity")).toContainText("15.9");
+    await expect(page.getByTestId("vehicle-estimate-tank")).toContainText("11");
+    await expect(page.getByTestId("vehicle-estimate-range")).toContainText("275");
     await page.getByTestId("wizard-vehicle-save").click();
     await expect(page.getByTestId("app-dashboard")).toBeVisible();
   });

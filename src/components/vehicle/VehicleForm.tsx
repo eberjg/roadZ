@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "@/components/ui/theme";
 import { pickDefaultTrim } from "@/services/vehicle/pickDefaultTrim";
 import { mapEpaDrivetrain, mapEpaFuelType } from "@/services/vehicle/epaMapper";
+import { defaultPlanningFillGallons } from "@/services/vehicle/tankCapacity";
 import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
 import type { VehicleProfile } from "@/services/vehicle/types";
 
@@ -98,7 +99,13 @@ export function VehicleForm({
           highwayMpgOverride: payload.entry.highwayMpg,
           cityMpgOverride: payload.entry.cityMpg,
           combinedMpgOverride: payload.record.combinedMpg,
-          tankGallonsOverride: payload.entry.tankGallons,
+          tankCapacityGallons: payload.entry.tankGallons,
+          planningFillGallons:
+            base.planningFillGallons ??
+            defaultPlanningFillGallons(payload.entry.tankGallons),
+          tankGallonsOverride:
+            base.planningFillGallons ??
+            defaultPlanningFillGallons(payload.entry.tankGallons),
           profileComplete: true,
         });
       } catch {
@@ -188,7 +195,7 @@ export function VehicleForm({
   const summaryLine = `${value.year} ${value.make} ${value.model}`;
   const mpgLine = estimate.isElectric
     ? `~${estimate.rangeMiles} mi range`
-    : `${estimate.combinedMpg} MPG avg · ${estimate.tankGallons} gal`;
+    : `${estimate.combinedMpg} MPG avg · ~${estimate.planningFillGallons} gal fill`;
 
   return (
     <section data-testid="vehicle-form" className="rounded-2xl border border-white/10 bg-slate-950/60">
@@ -363,7 +370,16 @@ export function VehicleForm({
                 <StatPill label="Avg" value={`${estimate.combinedMpg} MPG`} testId="vehicle-estimate-mpg" />
                 <StatPill label="City" value={`${estimate.cityMpg}`} testId="vehicle-estimate-city-mpg" />
                 <StatPill label="Hwy" value={`${estimate.highwayMpg}`} testId="vehicle-estimate-hwy-mpg" />
-                <StatPill label="Tank" value={`${estimate.tankGallons} gal`} testId="vehicle-estimate-tank" />
+                <StatPill
+                  label="Full tank"
+                  value={`${estimate.tankCapacityGallons} gal`}
+                  testId="vehicle-estimate-tank-capacity"
+                />
+                <StatPill
+                  label="Your fill"
+                  value={`${estimate.planningFillGallons} gal`}
+                  testId="vehicle-estimate-tank"
+                />
                 <StatPill label="Range" value={`~${estimate.rangeMiles} mi`} testId="vehicle-estimate-range" />
               </>
             ) : (
@@ -389,28 +405,36 @@ export function VehicleForm({
           ) : null}
 
           {!estimate.isElectric ? (
-            <Field label="Tank size (gal) — adjust if yours differs">
-              <input
-                data-testid="input-tank-gallons"
-                type="number"
-                min="5"
-                max="50"
-                step="0.1"
-                value={value.tankGallonsOverride ?? estimate.tankGallons}
-                onChange={(e) => {
-                  const gallons = Number(e.target.value);
-                  if (!Number.isFinite(gallons) || gallons <= 0) {
-                    return;
-                  }
-                  onChange({
-                    ...value,
-                    tankGallonsOverride: gallons,
-                    profileComplete: true,
-                  });
-                }}
-                className={ui.input}
-              />
-            </Field>
+            <>
+              <p className="text-[11px] leading-snug text-zinc-500">
+                EPA gives MPG only. Full tank is from Lexus specs ({estimate.tankCapacityGallons}{" "}
+                gal). Set your usual fill — range and live fuel use that. MPG updates while you
+                drive from GPS speed.
+              </p>
+              <Field label="Usual fill (gal) — what you drive with">
+                <input
+                  data-testid="input-tank-gallons"
+                  type="number"
+                  min="5"
+                  max={estimate.tankCapacityGallons}
+                  step="0.5"
+                  value={value.planningFillGallons ?? estimate.planningFillGallons}
+                  onChange={(e) => {
+                    const gallons = Number(e.target.value);
+                    if (!Number.isFinite(gallons) || gallons <= 0) {
+                      return;
+                    }
+                    onChange({
+                      ...value,
+                      planningFillGallons: gallons,
+                      tankGallonsOverride: gallons,
+                      profileComplete: true,
+                    });
+                  }}
+                  className={ui.input}
+                />
+              </Field>
+            </>
           ) : null}
         </div>
       ) : (

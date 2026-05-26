@@ -1,3 +1,4 @@
+import { resolvePlanningFillGallons, resolveTankCapacityGallons } from "./planningFuel";
 import { fallbackByFuelType, findDatabaseMatch } from "./vehicleDatabase";
 import type { VehicleDatabaseEntry, VehicleEfficiencyProfile, VehicleProfile } from "./types";
 
@@ -22,7 +23,7 @@ function entryFromProfileOverrides(profile: VehicleProfile): VehicleDatabaseEntr
     yearTo: profile.year,
     highwayMpg: profile.highwayMpgOverride,
     cityMpg: profile.cityMpgOverride ?? profile.highwayMpgOverride,
-    tankGallons: profile.tankGallonsOverride ?? base.tankGallons,
+    tankGallons: resolveTankCapacityGallons(profile, base.tankGallons),
     drivetrain: profile.drivetrain ?? base.drivetrain,
     fuelType: profile.fuelType,
   };
@@ -51,15 +52,17 @@ export function toEfficiencyProfile(decoded: DecodedVehicle): VehicleEfficiencyP
   const { entry, profile } = decoded;
   const isElectric = profile.fuelType === "electric" || entry.fuelType === "electric";
   const blendedMpg = Math.round((entry.highwayMpg + entry.cityMpg) / 2);
+  const tankCapacity = entry.tankGallons;
+  const planningFill = resolvePlanningFillGallons(profile, tankCapacity);
   const rangeMiles = isElectric
     ? (entry.electricRangeMiles ?? 280)
-    : Math.round(entry.highwayMpg * entry.tankGallons);
+    : Math.round(blendedMpg * planningFill);
 
   return {
     highwayMpg: entry.highwayMpg,
     cityMpg: entry.cityMpg,
     blendedMpg,
-    tankGallons: entry.tankGallons,
+    tankGallons: planningFill,
     rangeMiles,
     fuelType: entry.fuelType,
     isElectric,

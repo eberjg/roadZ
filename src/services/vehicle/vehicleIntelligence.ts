@@ -6,6 +6,7 @@ import type {
   VehicleProfile,
 } from "./types";
 import { computeDrivingEfficiency } from "./drivingEfficiency";
+import { resolvePlanningFillGallons } from "./planningFuel";
 import { buildVehicleEfficiencyProfile } from "./vehicleEfficiency";
 
 export type LiveTripIntelligenceInput = {
@@ -18,6 +19,8 @@ export type LiveTripIntelligenceInput = {
   operational?: OperationalState | null;
   weather?: WeatherIntelligence | null;
   averageSpeedMph?: number;
+  idleMinutes?: number;
+  stopGoFactor?: number;
   startingFuelGallons?: number;
 };
 
@@ -44,15 +47,19 @@ function conditionsFromTrip(input: LiveTripIntelligenceInput): DrivingConditions
   const elevationRisk = Boolean(
     input.weather?.risk.factors.some((f) => f.toLowerCase().includes("mountain")),
   );
+  const speedMph = input.averageSpeedMph ?? 65;
+  const idleMinutes = input.idleMinutes ?? 0;
 
   return {
-    averageSpeedMph: input.averageSpeedMph ?? 65,
+    averageSpeedMph: speedMph,
     weatherCondition: current?.condition,
     precipitationMm: current?.precipitationMm,
     fatigueScore,
     elevationRisk,
-    idleMinutes: (input.operational?.progress.drivingSessionHours ?? 0) > 4 ? 25 : 0,
-    stopGoFactor: (input.averageSpeedMph ?? 65) < 50 ? 0.5 : 0.1,
+    idleMinutes,
+    stopGoFactor:
+      input.stopGoFactor ??
+      (speedMph < 45 ? 0.55 : speedMph < 55 ? 0.35 : speedMph > 75 ? 0.05 : 0.12),
   };
 }
 
@@ -84,12 +91,15 @@ export function buildLiveTripIntelligence(
     input.totalDistanceMiles - input.completedDistanceMiles,
   );
 
+  const planningFill =
+    input.startingFuelGallons ?? resolvePlanningFillGallons(input.profile);
+
   const live = computeDrivingEfficiency({
     profile: vehicle,
     conditions: conditionsFromTrip(input),
     remainingDistanceMiles,
     gasPrice: input.gasPrice,
-    startingFuelGallons: input.startingFuelGallons,
+    startingFuelGallons: planningFill,
   });
 
   const summary = vehicle.isElectric

@@ -27,6 +27,7 @@ import { buildOperationalState } from "@/services/operations/tripStateEngine";
 import type { LocationSample } from "@/services/location/types";
 import type { LngLat, RouteData } from "@/services/maps/types";
 import { getVehicleProfile } from "@/services/vehicle/vehicleStorage";
+import { resolvePlanningFillGallons } from "@/services/vehicle/planningFuel";
 import { buildLiveTripIntelligence } from "@/services/vehicle/vehicleIntelligence";
 import type { TripInput, TripResult } from "@/services/trip/types";
 import type { WeatherIntelligence } from "@/services/weather/types";
@@ -77,6 +78,16 @@ export function OperationalCockpit({
   });
   const { tracking, gpsSampleAgeMs } = locationTracking;
 
+  const liveDriveSpeedMph =
+    showLiveData && trackerMode === "live" && tracking.speedMph > 3
+      ? tracking.speedMph
+      : undefined;
+  const liveIdleMinutes =
+    showLiveData && trackerMode === "live"
+      ? Math.round(tracking.idleMinutes)
+      : undefined;
+  const planningFillGallons = resolvePlanningFillGallons(vehicleProfile);
+
   const { fuelIntelligence, operational, vehicleIntelligence } = useMemo(() => {
     const baseFuel = buildFuelIntelligence({
       totalDistanceMiles: trip.route.distanceMiles,
@@ -99,6 +110,9 @@ export function OperationalCockpit({
       gasPrice: trip.input.gasPrice,
       operational: baseOps,
       weather,
+      averageSpeedMph: liveDriveSpeedMph,
+      idleMinutes: liveIdleMinutes,
+      startingFuelGallons: planningFillGallons,
     });
     const dynamicFuel = buildFuelIntelligence({
       totalDistanceMiles: trip.route.distanceMiles,
@@ -122,13 +136,24 @@ export function OperationalCockpit({
       gasPrice: trip.input.gasPrice,
       operational: dynamicOps,
       weather,
+      averageSpeedMph: liveDriveSpeedMph,
+      idleMinutes: liveIdleMinutes,
+      startingFuelGallons: planningFillGallons,
     });
     return {
       fuelIntelligence: dynamicFuel,
       operational: dynamicOps,
       vehicleIntelligence: liveIntelligence,
     };
-  }, [trip, completedDistanceMiles, vehicleProfile, weather]);
+  }, [
+    trip,
+    completedDistanceMiles,
+    vehicleProfile,
+    weather,
+    liveDriveSpeedMph,
+    liveIdleMinutes,
+    planningFillGallons,
+  ]);
 
   useEffect(() => {
     if (!showLiveData) {
