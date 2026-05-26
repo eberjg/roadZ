@@ -1,4 +1,4 @@
-# redZ
+# roadZ
 
 AI-assisted road trip co-pilot (Next.js).
 

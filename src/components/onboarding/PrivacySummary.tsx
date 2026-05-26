@@ -30,7 +30,7 @@ export function PrivacySummary({ onContinue, onBack }: PrivacySummaryProps) {
       <span className={ui.glassSheen} aria-hidden />
       <h2 className={`relative ${ui.h2}`}>Your privacy</h2>
       <p className={`relative mt-2 ${ui.body}`}>
-        redZ uses GPS only to help you on this trip — nothing more.
+        roadZ uses GPS only to help you on this trip — nothing more.
       </p>
 
       <ul className="relative mt-6 flex flex-col gap-4">

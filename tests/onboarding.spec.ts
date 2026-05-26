@@ -97,7 +97,7 @@ test.describe("First-launch onboarding", () => {
     await expect(page.getByTestId("onboarding-permission-success")).toBeVisible();
     await page.getByTestId("onboarding-enter-dashboard").click();
     await expect(page.getByTestId("app-dashboard")).toBeVisible();
-    await expect(page.getByTestId("dashboard-title")).toHaveText("redZ");
+    await expect(page.getByTestId("dashboard-title")).toHaveText("roadZ");
   });
 
   test("GPS permission denied shows recovery and manual mode", async ({ page }) => {

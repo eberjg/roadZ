@@ -22,7 +22,7 @@ export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
       </div>
       <p className={`relative ${ui.eyebrow}`}>Welcome</p>
       <h1 className={`relative mt-2 text-4xl font-bold tracking-tight text-white`}>
-        redZ
+        roadZ
       </h1>
       <p className={`relative mt-4 ${ui.body}`}>
         Your premium in-car co-pilot for fuel, stops, fatigue, weather, and trip progress —
