@@ -2,7 +2,51 @@
 
 AI-assisted road trip dashboard (Next.js).
 
-## Deploy on Railway
+## Git → Railway auto-deploy (use this every fix)
+
+**One-time Railway setup**
+
+1. [Railway dashboard](https://railway.com/dashboard) → your project → **roadZ** service.
+2. **Settings** → **Source** (or **Connect Repo**):
+   - Repo: **`eberjg/roadZ`**
+   - Branch: **`main`**
+   - Root directory: **`/`** (repo root)
+   - **Enable automatic deploys** on push (on by default when connected).
+3. **Settings** → **Networking** → generate/copy your **HTTPS** public URL.
+
+After that, **every `git push` to `main` triggers a new Railway deploy.**
+
+**Every fix workflow (local)**
+
+```bash
+# 1) Make code changes in Cursor
+# 2) Validate locally
+npm run lint
+npm run build
+
+# 3) Commit and push (or use the helper script)
+git add -A
+git commit -m "Describe your fix"
+git push origin main
+```
+
+Or one command (runs lint + build, then commit + push):
+
+```bash
+chmod +x scripts/ship.sh   # first time only
+./scripts/ship.sh "Your fix message here"
+```
+
+**Check deploy**
+
+1. Railway → **Deployments** → latest should show **Building** then **Success**.
+2. Open your public **https://** URL on phone/desktop after deploy finishes.
+
+**Do not commit secrets.** API keys live only in Railway **Variables**, not in git.
+
+---
+
+## Deploy on Railway (first-time env vars)
 
 1. Connect this repo in [Railway](https://railway.com/dashboard).
 2. Add a **Web Service** from the GitHub repo (root = this folder if monorepo, else repo root).
