@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-export type CockpitTab = "mission" | "fuel" | "ops" | "gps";
+export type CockpitTab = "mission" | "fuel" | "ops" | "gps" | "safety";
 
 export async function startCockpitTrip(page: Page, options?: { skipGoto?: boolean }) {
   if (!options?.skipGoto) {

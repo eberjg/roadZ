@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { CockpitLayout } from "./CockpitLayout";
 import { TripStatusStrip } from "./TripStatusStrip";
 import { OperationalHUD } from "./OperationalHUD";
@@ -15,6 +15,13 @@ import { OperationalDashboard } from "@/components/operations/OperationalDashboa
 import { EnvironmentalDashboard } from "@/components/weather/EnvironmentalDashboard";
 import { RouteMap } from "@/components/map/RouteMap";
 import { DriverCopilotBanner } from "@/components/trip/DriverCopilotBanner";
+import { FamilySafetyPanel } from "@/components/safety/FamilySafetyPanel";
+import { useSafetyRelay } from "@/components/safety/useSafetyRelay";
+import {
+  getSafetyPreferences,
+  subscribeSafetyStorage,
+} from "@/services/safety/contactManager";
+import { defaultSafetyPreferences, type TripBroadcastContext } from "@/services/safety/types";
 import { buildFuelIntelligence } from "@/services/fuel/fuelService";
 import { buildOperationalState } from "@/services/operations/tripStateEngine";
 import type { LocationSample } from "@/services/location/types";
@@ -165,6 +172,59 @@ export function OperationalCockpit({
 
   const remainingMiles = operational.progress.remainingDistanceMiles;
   const liveActive = showLiveData && trackerMode === "live";
+  const tripId = `${trip.input.startZip}-${trip.input.destinationZip}`;
+  const stopCount = fuelIntelligence.plannedStops.filter(
+    (stop) => stop.mileMarker <= completedDistanceMiles,
+  ).length;
+  const preferences = useSyncExternalStore(
+    subscribeSafetyStorage,
+    getSafetyPreferences,
+    () => defaultSafetyPreferences,
+  );
+
+  const broadcastContext: TripBroadcastContext = useMemo(() => {
+    const progressPercent =
+      trip.route.distanceMiles > 0
+        ? Math.round((completedDistanceMiles / trip.route.distanceMiles) * 100)
+        : 0;
+    const overnightEvent = operational.timeline.find(
+      (event) => event.type === "sleep" && event.mileMarker <= completedDistanceMiles,
+    );
+    return {
+      driverName: preferences.driverDisplayName,
+      startPlace: trip.input.startPlace,
+      destinationPlace: trip.input.destinationPlace,
+      currentPlaceLabel: `${progressPercent}% between ${trip.input.startPlace} and ${trip.input.destinationPlace}`,
+      totalDistanceMiles: trip.route.distanceMiles,
+      completedDistanceMiles,
+      etaLabel: trip.route.etaLabel,
+      fuelRangeMiles: vehicleIntelligence.live.remainingRangeMiles,
+      weatherRisk: weather?.risk.level ?? "NORMAL",
+      weatherSummary: weather?.current.summary ?? "Conditions stable",
+      fatigueStatus: operational.fatigue.status,
+      operationalStatus: operational.status,
+      nextStopName: fuelIntelligence.recommendedNextStop?.station.name ?? null,
+      isOvernightStop: Boolean(overnightEvent),
+      gpsStale: false,
+      tripStalled: false,
+    };
+  }, [
+    trip,
+    completedDistanceMiles,
+    vehicleIntelligence,
+    weather,
+    operational,
+    fuelIntelligence,
+    preferences.driverDisplayName,
+  ]);
+
+  const { emergency } = useSafetyRelay({
+    tripId,
+    context: broadcastContext,
+    stopCount,
+    enabled: preferences.relayEnabled,
+    gpsSampleAgeMs: null,
+  });
 
   return (
     <CockpitLayout
@@ -196,6 +256,8 @@ export function OperationalCockpit({
           weather={weather}
           remainingMiles={remainingMiles}
           etaLabel={trip.route.etaLabel}
+          safetyRelayOn={preferences.relayEnabled}
+          safetyEmergency={emergency.active}
         />
       }
       bottomSheet={
@@ -274,6 +336,9 @@ export function OperationalCockpit({
                 liveUpdatesEnabled={showLiveData}
               />
             </div>
+          }
+          safetyPanel={
+            <FamilySafetyPanel tripId={tripId} broadcastContext={broadcastContext} />
           }
           gpsPanel={
             <LiveTripTracker

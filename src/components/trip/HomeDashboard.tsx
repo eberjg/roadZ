@@ -6,6 +6,8 @@ import { DashboardSettings } from "@/components/settings/DashboardSettings";
 import { motion } from "@/components/ui/motion";
 import { ui } from "@/components/ui/theme";
 import { OperationalCockpit } from "@/components/cockpit/OperationalCockpit";
+import { FamilySafetyPanel } from "@/components/safety/FamilySafetyPanel";
+import { clearRelayState } from "@/services/safety/safetyEngine";
 import { TripPlanner } from "@/components/trip/TripPlanner";
 import { VehicleProfileWizard } from "@/components/vehicle/VehicleProfileWizard";
 import { VehicleSummary } from "@/components/vehicle/VehicleSummary";
@@ -132,6 +134,7 @@ export function HomeDashboard() {
 
   const handleNewTrip = useCallback(() => {
     clearTripSession();
+    clearRelayState();
     setSessionCleared(true);
     setTripOverride(null);
     setProgressOverride(undefined);
@@ -271,6 +274,8 @@ export function HomeDashboard() {
         />
 
         <VehicleSummary onEdit={() => setShowVehicleWizard(true)} />
+
+        <FamilySafetyPanel />
 
         {tripPlanner}
 

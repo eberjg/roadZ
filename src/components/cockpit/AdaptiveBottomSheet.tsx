@@ -4,13 +4,14 @@ import { useState, type ReactNode } from "react";
 import { ui, cn } from "@/components/ui/theme";
 import { motion } from "@/components/ui/motion";
 
-type SheetTab = "mission" | "fuel" | "ops" | "gps";
+type SheetTab = "mission" | "fuel" | "ops" | "gps" | "safety";
 
 type AdaptiveBottomSheetProps = {
   missionPanel: ReactNode;
   fuelPanel: ReactNode;
   opsPanel: ReactNode;
   gpsPanel: ReactNode;
+  safetyPanel: ReactNode;
   summaryLine: string;
 };
 
@@ -19,6 +20,7 @@ const tabs: { id: SheetTab; label: string }[] = [
   { id: "fuel", label: "Fuel" },
   { id: "ops", label: "Ops" },
   { id: "gps", label: "GPS" },
+  { id: "safety", label: "Safety" },
 ];
 
 export function AdaptiveBottomSheet({
@@ -26,6 +28,7 @@ export function AdaptiveBottomSheet({
   fuelPanel,
   opsPanel,
   gpsPanel,
+  safetyPanel,
   summaryLine,
 }: AdaptiveBottomSheetProps) {
   const [expanded, setExpanded] = useState(false);
@@ -38,7 +41,9 @@ export function AdaptiveBottomSheet({
         ? fuelPanel
         : tab === "ops"
           ? opsPanel
-          : gpsPanel;
+          : tab === "safety"
+            ? safetyPanel
+            : gpsPanel;
 
   return (
     <section

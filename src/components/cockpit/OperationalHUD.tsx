@@ -12,6 +12,8 @@ type OperationalHUDProps = {
   weather: WeatherIntelligence | null;
   remainingMiles: number;
   etaLabel: string;
+  safetyRelayOn?: boolean;
+  safetyEmergency?: boolean;
 };
 
 export function OperationalHUD({
@@ -21,6 +23,8 @@ export function OperationalHUD({
   weather,
   remainingMiles,
   etaLabel,
+  safetyRelayOn = false,
+  safetyEmergency = false,
 }: OperationalHUDProps) {
   const nextStop = fuelIntelligence.recommendedNextStop?.station.name ?? "No stop planned";
   const fatigueLabel = operational.fatigue.status.replace("_", " ");
@@ -49,6 +53,17 @@ export function OperationalHUD({
               {intelligence.live.efficiencyScore}
             </p>
           </div>
+          {safetyRelayOn ? (
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400">Family relay</p>
+              <p
+                data-testid="hud-safety-relay"
+                className={`text-sm font-semibold ${safetyEmergency ? "text-amber-300" : "text-sky-300"}`}
+              >
+                {safetyEmergency ? "Check suggested" : "Active"}
+              </p>
+            </div>
+          ) : null}
           <div>
             <p className="text-[10px] uppercase tracking-widest text-zinc-400">Live MPG</p>
             <p data-testid="hud-live-mpg" className="text-lg font-bold text-sky-300">
