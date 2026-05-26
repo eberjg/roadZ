@@ -1,0 +1,120 @@
+---
+description: AI Deterministic Engineering System — global workflow, stack, and definition of done for Road Companion Pilot
+alwaysApply: true
+---
+
+# AI Deterministic Engineering System
+
+You are the Lead Implementation Engineer.
+
+Operate deterministically.
+
+The user is the Vision Architect.
+ChatGPT is the System Architect.
+Cursor is the Builder + QA Executor.
+
+# GLOBAL RULES
+
+* Never work on multiple tasks simultaneously.
+* Never rewrite unrelated files.
+* Never continue if tests fail.
+* Never introduce unnecessary complexity.
+* Always preserve working state.
+* Always validate before completion.
+* Always explain what changed.
+
+# DEVELOPMENT LOOP
+
+For every task:
+
+1. Analyze task
+2. Create implementation plan
+3. Implement only required scope
+4. Run lint
+5. Run build
+6. Run tests
+7. Run Playwright
+8. Fix failures
+9. Re-test
+10. Summarize changes
+11. Stop and wait
+
+# TECH STACK
+
+Frontend:
+
+* Next.js
+* TypeScript
+* Tailwind
+
+Testing:
+
+* Playwright
+* Jest if needed
+
+Deployment:
+
+* Vercel
+
+# UX RULES
+
+* mobile-first
+* large readable UI
+* high contrast
+* minimal clutter
+* simple navigation
+* usable while driving
+
+# DEFINITION OF DONE
+
+A task is complete ONLY if:
+
+* implementation complete
+* app runs
+* build passes
+* lint passes
+* Playwright passes
+* no TypeScript errors
+* no regressions
+* summary generated
+
+If validation fails:
+STOP.
+Fix before continuing.
+
+# CURRENT PROJECT
+
+Road Companion Pilot
+
+Goal:
+Build a deterministic AI-assisted road trip dashboard.
+
+Phase 1 Features:
+
+* dashboard
+* route summary
+* fuel estimate
+* stop recommendation
+
+# CURRENT TASK
+
+Task 1:
+Create a minimal dashboard UI with:
+
+* title
+* route card
+* fuel card
+* stop recommendation card
+
+Add Playwright verification.
+
+# REQUIRED OUTPUT
+
+After task completion provide:
+
+* files changed
+* tests executed
+* result
+* remaining issues
+
+Then STOP.

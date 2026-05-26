@@ -1,0 +1,131 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { buildOperationalState } from "@/services/operations/tripStateEngine";
+import type { FuelIntelligence } from "@/services/fuel/types";
+import type { RouteData } from "@/services/maps/types";
+import type { TripInput } from "@/services/trip/types";
+import type { WeatherIntelligence } from "@/services/weather/types";
+import { EnvironmentalSummary } from "./EnvironmentalSummary";
+import { RiskPanel } from "./RiskPanel";
+import { SevereAlerts } from "./SevereAlerts";
+import { WeatherPanel } from "./WeatherPanel";
+import { WeatherTimeline } from "./WeatherTimeline";
+
+type EnvironmentalDashboardProps = {
+  tripInput: TripInput;
+  route: RouteData;
+  fuelIntelligence: FuelIntelligence;
+  completedDistanceMiles: number;
+};
+
+export function EnvironmentalDashboard({
+  tripInput,
+  route,
+  fuelIntelligence,
+  completedDistanceMiles,
+}: EnvironmentalDashboardProps) {
+  const [weather, setWeather] = useState<WeatherIntelligence | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const operational = useMemo(
+    () =>
+      buildOperationalState({
+        totalDistanceMiles: route.distanceMiles,
+        routeEtaLabel: route.etaLabel,
+        completedDistanceMiles,
+        fuelIntelligence,
+      }),
+    [route, completedDistanceMiles, fuelIntelligence],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWeather() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/weather", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startZip: tripInput.startZip,
+            destinationZip: tripInput.destinationZip,
+            totalDistanceMiles: route.distanceMiles,
+            completedDistanceMiles,
+            fatigueStatus: operational.fatigue.status,
+            drivingSessionHours: operational.progress.drivingSessionHours,
+          }),
+        });
+        const payload = (await response.json()) as WeatherIntelligence | { error?: string };
+        if (!response.ok) {
+          throw new Error("error" in payload ? payload.error : "Weather unavailable");
+        }
+        if (!cancelled) {
+          setWeather(payload as WeatherIntelligence);
+        }
+      } catch (fetchError) {
+        if (!cancelled) {
+          setError(fetchError instanceof Error ? fetchError.message : "Weather unavailable");
+          setWeather(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadWeather();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tripInput.startZip,
+    tripInput.destinationZip,
+    route.distanceMiles,
+    completedDistanceMiles,
+    operational.fatigue.status,
+    operational.progress.drivingSessionHours,
+  ]);
+
+  if (loading) {
+    return (
+      <section
+        data-testid="environmental-dashboard"
+        className="rounded-2xl border-2 border-zinc-300 bg-white p-6"
+      >
+        <p data-testid="weather-loading" className="text-lg font-semibold text-zinc-800">
+          Loading weather intelligence…
+        </p>
+      </section>
+    );
+  }
+
+  if (error || !weather) {
+    return (
+      <section
+        data-testid="environmental-dashboard"
+        className="rounded-2xl border-2 border-red-700 bg-red-50 p-6"
+      >
+        <p data-testid="weather-error" className="text-lg font-semibold text-red-900">
+          {error ?? "Weather data unavailable"}
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <div data-testid="environmental-dashboard" className="flex flex-col gap-6">
+      <EnvironmentalSummary intelligence={weather} />
+      <WeatherPanel intelligence={weather} />
+      <RiskPanel intelligence={weather} />
+      <SevereAlerts intelligence={weather} />
+      <WeatherTimeline intelligence={weather} />
+    </div>
+  );
+}

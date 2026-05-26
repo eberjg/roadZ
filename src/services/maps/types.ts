@@ -1,0 +1,52 @@
+export type LngLat = {
+  lng: number;
+  lat: number;
+};
+
+export type RouteWaypoint = LngLat & {
+  label: string;
+};
+
+export type RouteData = {
+  distanceMiles: number;
+  durationSeconds: number;
+  etaLabel: string;
+  polyline: [number, number][];
+  start: RouteWaypoint;
+  end: RouteWaypoint;
+  source: "mapbox" | "fallback";
+};
+
+export type RouteRequest = {
+  startZip: string;
+  destinationZip: string;
+};
+
+export type MapboxGeocodeFeature = {
+  center: [number, number];
+  place_name: string;
+};
+
+export type MapboxGeocodeResponse = {
+  features: MapboxGeocodeFeature[];
+};
+
+export type MapboxDirectionsRoute = {
+  distance: number;
+  duration: number;
+  geometry: {
+    coordinates: [number, number][];
+  };
+};
+
+export type MapboxDirectionsResponse = {
+  code: string;
+  routes?: MapboxDirectionsRoute[];
+  message?: string;
+};
+
+export type RouteErrorCode =
+  | "INVALID_ZIP"
+  | "TIMEOUT"
+  | "UNAVAILABLE"
+  | "MALFORMED";
