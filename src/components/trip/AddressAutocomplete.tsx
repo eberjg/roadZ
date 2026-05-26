@@ -27,13 +27,26 @@ export function AddressAutocomplete({
 }: AddressAutocompleteProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(false);
+  /** After user picks a row, do not reopen suggestions until they edit the field. */
+  const pickedAddressRef = useRef<string | null>(null);
+
+  function looksLikeConfirmedAddress(text: string) {
+    return text.includes(",") && text.trim().length >= 20;
+  }
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.trim().length < 2) {
+      setSuggestions([]);
+      setIsOpen(false);
+      return;
+    }
+
+    if (pickedAddressRef.current && query === pickedAddressRef.current) {
       setSuggestions([]);
       setIsOpen(false);
       return;
@@ -56,6 +69,16 @@ export function AddressAutocomplete({
   }, []);
 
   useEffect(() => {
+    if (looksLikeConfirmedAddress(value) && !pickedAddressRef.current) {
+      pickedAddressRef.current = value;
+    }
+
+    if (pickedAddressRef.current && value === pickedAddressRef.current) {
+      setSuggestions([]);
+      setIsOpen(false);
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       void fetchSuggestions(value);
     }, 280);
@@ -73,10 +96,19 @@ export function AddressAutocomplete({
   }, []);
 
   function selectSuggestion(suggestion: PlaceSuggestion) {
+    pickedAddressRef.current = suggestion.label;
     onValueChange(suggestion.label);
     setSuggestions([]);
     setIsOpen(false);
     setActiveIndex(-1);
+    inputRef.current?.blur();
+  }
+
+  function handleInputChange(next: string) {
+    if (pickedAddressRef.current && next !== pickedAddressRef.current) {
+      pickedAddressRef.current = null;
+    }
+    onValueChange(next);
   }
 
   return (
@@ -84,6 +116,7 @@ export function AddressAutocomplete({
       <label className="block">
         <span className={ui.label}>{label}</span>
         <input
+          ref={inputRef}
           data-testid={testId}
           type="text"
           role="combobox"
@@ -93,8 +126,11 @@ export function AddressAutocomplete({
           autoComplete="off"
           placeholder={placeholder}
           value={value}
-          onChange={(event) => onValueChange(event.target.value)}
+          onChange={(event) => handleInputChange(event.target.value)}
           onFocus={() => {
+            if (pickedAddressRef.current && value === pickedAddressRef.current) {
+              return;
+            }
             if (suggestions.length > 0) {
               setIsOpen(true);
             }
@@ -125,7 +161,10 @@ export function AddressAutocomplete({
           type="button"
           data-testid={`${testId}-use-location`}
           disabled={locationLoading}
-          onClick={() => onUseCurrentLocation?.()}
+          onClick={() => {
+            pickedAddressRef.current = null;
+            onUseCurrentLocation?.();
+          }}
           className={`mt-2 ${ui.btnSecondary}`}
         >
           {locationLoading ? "Getting your location…" : "Use my current location"}

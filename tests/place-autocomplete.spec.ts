@@ -14,6 +14,7 @@ test.describe("Address autocomplete", () => {
     });
     await page.getByTestId("input-start-zip-suggestion-0").click();
     await expect(page.getByTestId("input-start-zip")).toHaveValue(/33301|Fort Lauderdale/i);
+    await expect(page.getByTestId("input-start-zip-suggestions")).toHaveCount(0);
   });
 
   test("shows address suggestions while typing destination", async ({ page }) => {

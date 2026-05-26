@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "@/components/ui/theme";
 import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
 import { mapEpaDrivetrain, mapEpaFuelType } from "@/services/vehicle/epaMapper";
@@ -25,6 +25,10 @@ async function fetchCatalog<T>(query: string): Promise<T> {
   return payload;
 }
 
+function catalogKey(make: string, model: string, year: number) {
+  return `${make}|${model}|${year}`;
+}
+
 export function VehicleSelector({
   value,
   onChange,
@@ -37,7 +41,16 @@ export function VehicleSelector({
   const [trims, setTrims] = useState<TrimOption[]>([]);
   const [loading, setLoading] = useState<"models" | "years" | "trims" | "detail" | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [selectedTrimId, setSelectedTrimId] = useState(value.epaVehicleId ?? "");
+
+  const modelsLoadedFor = useRef<string | null>(null);
+  const yearsLoadedFor = useRef<string | null>(null);
+  const trimsLoadedFor = useRef<string | null>(null);
+  const trimAppliedId = useRef<string | null>(null);
+  const profileRef = useRef(value);
+
+  useEffect(() => {
+    profileRef.current = value;
+  }, [value]);
 
   useEffect(() => {
     void fetchCatalog<{ makes: string[] }>("step=makes")
@@ -46,13 +59,14 @@ export function VehicleSelector({
   }, []);
 
   const applyTrim = useCallback(
-    async (trimId: string, baseProfile: VehicleProfile) => {
-      if (!trimId) {
+    async (trimId: string) => {
+      if (!trimId || trimAppliedId.current === trimId) {
         return;
       }
+      trimAppliedId.current = trimId;
       setLoading("detail");
-      setSelectedTrimId(trimId);
       try {
+        const baseProfile = profileRef.current;
         const payload = await fetchCatalog<{
           record: {
             year: number;
@@ -83,6 +97,7 @@ export function VehicleSelector({
         });
         setCatalogError(null);
       } catch {
+        trimAppliedId.current = null;
         setCatalogError("Could not load EPA fuel data for this trim.");
       } finally {
         setLoading(null);
@@ -92,70 +107,109 @@ export function VehicleSelector({
   );
 
   useEffect(() => {
-    if (!value.make) {
+    if (!value.make || modelsLoadedFor.current === value.make) {
       return;
     }
-    // Catalog fetch on make change
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async catalog load
+    modelsLoadedFor.current = value.make;
+    yearsLoadedFor.current = null;
+    trimsLoadedFor.current = null;
+    trimAppliedId.current = null;
+
     setLoading("models");
     void fetchCatalog<{ models: string[] }>(`step=models&make=${encodeURIComponent(value.make)}`)
       .then((payload) => {
         setModels(payload.models);
-        if (payload.models.length > 0 && !payload.models.includes(value.model)) {
-          onChange({ ...value, model: payload.models[0] });
+        const current = profileRef.current;
+        if (payload.models.length > 0 && !payload.models.includes(current.model)) {
+          onChange({
+            ...current,
+            make: value.make,
+            model: payload.models[0],
+            epaVehicleId: undefined,
+            trimLabel: undefined,
+            highwayMpgOverride: undefined,
+            cityMpgOverride: undefined,
+          });
         }
       })
       .catch(() => setCatalogError("Could not load models for this make."))
       .finally(() => setLoading(null));
-  }, [value.make]); // eslint-disable-line react-hooks/exhaustive-deps -- model reset only when make changes
+  }, [value.make, onChange]);
 
   useEffect(() => {
-    if (!value.make || !value.model) {
+    const key = `${value.make}|${value.model}`;
+    if (!value.make || !value.model || yearsLoadedFor.current === key) {
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async catalog load
+    yearsLoadedFor.current = key;
+    trimsLoadedFor.current = null;
+    trimAppliedId.current = null;
+
     setLoading("years");
     void fetchCatalog<{ years: number[] }>(
       `step=years&make=${encodeURIComponent(value.make)}&model=${encodeURIComponent(value.model)}`,
     )
       .then((payload) => {
         setYears(payload.years);
-        if (payload.years.length > 0 && !payload.years.includes(value.year)) {
-          onChange({ ...value, year: payload.years[0] });
+        const current = profileRef.current;
+        if (payload.years.length > 0 && !payload.years.includes(current.year)) {
+          onChange({
+            ...current,
+            year: payload.years[0],
+            epaVehicleId: undefined,
+            trimLabel: undefined,
+            highwayMpgOverride: undefined,
+            cityMpgOverride: undefined,
+          });
         }
       })
       .catch(() => setCatalogError("Could not load model years."))
       .finally(() => setLoading(null));
-  }, [value.make, value.model]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value.make, value.model, onChange]);
 
   useEffect(() => {
-    if (!value.make || !value.model || !value.year) {
+    const key = catalogKey(value.make, value.model, value.year);
+    if (!value.make || !value.model || !value.year || trimsLoadedFor.current === key) {
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async catalog load
+    trimsLoadedFor.current = key;
+
     setLoading("trims");
     void fetchCatalog<{ trims: TrimOption[] }>(
       `step=trims&make=${encodeURIComponent(value.make)}&model=${encodeURIComponent(value.model)}&year=${value.year}`,
     )
       .then((payload) => {
         setTrims(payload.trims);
+        const current = profileRef.current;
+
         if (payload.trims.length === 1) {
-          void applyTrim(payload.trims[0].id, value);
-        } else if (value.epaVehicleId && payload.trims.some((t) => t.id === value.epaVehicleId)) {
-          setSelectedTrimId(value.epaVehicleId);
-        } else {
-          setSelectedTrimId("");
+          void applyTrim(payload.trims[0].id);
+          return;
         }
+
+        if (
+          current.epaVehicleId &&
+          payload.trims.some((trim) => trim.id === current.epaVehicleId)
+        ) {
+          trimAppliedId.current = current.epaVehicleId;
+          return;
+        }
+
+        trimAppliedId.current = null;
       })
       .catch(() => {
         setTrims([]);
         setCatalogError("No EPA trims — using smart estimate.");
       })
       .finally(() => setLoading(null));
-  }, [value.make, value.model, value.year, applyTrim, value]);
+  }, [value.make, value.model, value.year, applyTrim]);
 
-  const trimSelectValue = selectedTrimId || value.epaVehicleId || "";
+  function clearTrimSelection() {
+    trimAppliedId.current = null;
+    trimsLoadedFor.current = null;
+  }
 
+  const trimSelectValue = value.epaVehicleId ?? "";
   const estimate = estimateVehicle(value);
 
   return (
@@ -171,6 +225,8 @@ export function VehicleSelector({
             data-testid="wizard-vehicle-make"
             value={value.make}
             onChange={(event) => {
+              clearTrimSelection();
+              modelsLoadedFor.current = null;
               onChange({
                 ...value,
                 make: event.target.value,
@@ -197,6 +253,8 @@ export function VehicleSelector({
             value={value.model}
             disabled={loading === "models" || models.length === 0}
             onChange={(event) => {
+              clearTrimSelection();
+              yearsLoadedFor.current = null;
               onChange({
                 ...value,
                 model: event.target.value,
@@ -223,6 +281,7 @@ export function VehicleSelector({
             value={String(value.year)}
             disabled={loading === "years" || years.length === 0}
             onChange={(event) => {
+              clearTrimSelection();
               onChange({
                 ...value,
                 year: Number(event.target.value),
@@ -248,7 +307,21 @@ export function VehicleSelector({
             data-testid="wizard-vehicle-trim"
             value={trimSelectValue}
             disabled={loading === "trims" || loading === "detail"}
-            onChange={(event) => void applyTrim(event.target.value, value)}
+            onChange={(event) => {
+              const trimId = event.target.value;
+              if (!trimId) {
+                trimAppliedId.current = null;
+                onChange({
+                  ...value,
+                  epaVehicleId: undefined,
+                  trimLabel: undefined,
+                  highwayMpgOverride: undefined,
+                  cityMpgOverride: undefined,
+                });
+                return;
+              }
+              void applyTrim(trimId);
+            }}
             className={ui.input}
           >
             <option value="">
