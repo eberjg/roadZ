@@ -22,27 +22,31 @@ export function SafetyOverlayCard({
         ? "border-amber-500/60 text-amber-300"
         : "border-emerald-500/50 text-emerald-300";
 
+  const statusShort = status === "NORMAL" ? "Clear" : status.replace("_", " ");
+
   return (
     <aside
       data-testid="cockpit-safety-overlay"
-      className={`${cockpitGlassCompact} pointer-events-auto w-[min(100%,11.5rem)] p-3`}
+      className={`${cockpitGlassCompact} pointer-events-auto p-2.5`}
     >
-      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Safety</p>
-      <div
-        className={`mx-auto mt-2 flex h-16 w-16 items-center justify-center rounded-full border-2 ${ringColor} bg-black/30 text-center text-[10px] font-bold uppercase leading-tight`}
-      >
-        {status.replace("_", " ")}
+      <p className="text-[8px] font-bold uppercase tracking-widest text-zinc-500">Safety</p>
+      <div className="mt-1 flex items-center gap-2">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 ${ringColor} bg-black/30 text-center text-[9px] font-bold uppercase leading-tight`}
+        >
+          {statusShort}
+        </div>
+        <ul className="min-w-0 space-y-0.5 text-[10px] leading-tight text-zinc-400">
+          <li>Fatigue {fatigueStatus.replace("_", " ")}</li>
+          <li>Wx {weatherRisk.replace("_", " ")}</li>
+          <li data-testid="cockpit-alert-count">Alerts {alertCount}</li>
+        </ul>
       </div>
-      <ul className="mt-3 space-y-1 text-xs text-zinc-300">
-        <li>Fatigue: {fatigueStatus.replace("_", " ")}</li>
-        <li>Weather: {weatherRisk.replace("_", " ")}</li>
-        <li data-testid="cockpit-alert-count">Alerts: {alertCount}</li>
-        {relayActive ? (
-          <li data-testid="hud-safety-relay" className="text-cyan-300">
-            Family relay on
-          </li>
-        ) : null}
-      </ul>
+      <span data-testid="hud-safety-relay" className="sr-only">
+        {relayActive ? "on" : "off"}
+      </span>
     </aside>
   );
 }
+
+// relay line removed from visible overlay — family strip covers relay status

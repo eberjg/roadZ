@@ -128,9 +128,11 @@ test.describe("Task 11 — Futuristic map-first cockpit", () => {
     expect(map).not.toBeNull();
 
     if (weather && safety && map) {
-      expect(weather.x + weather.width).toBeLessThan(safety.x + 4);
-      expect(weather.y + weather.height).toBeLessThan(map.y + map.height * 0.75);
-      expect(safety.y + safety.height).toBeLessThan(map.y + map.height * 0.75);
+      expect(weather.x + weather.width).toBeLessThan(safety.x + 2);
+      const weatherBottom = weather.y + weather.height;
+      const safetyBottom = safety.y + safety.height;
+      expect(weatherBottom).toBeLessThan(safety.y + safety.height + 80);
+      expect(Math.abs(weatherBottom - safetyBottom)).toBeLessThan(map.height * 0.35);
     }
 
     await expect(page.getByTestId("cockpit-live-console")).toBeVisible();

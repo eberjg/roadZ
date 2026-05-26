@@ -16,20 +16,20 @@ export function LiveDrivingConsole({
   return (
     <section
       data-testid="cockpit-live-console"
-      className={`${cockpitGlass} pointer-events-auto mx-2 px-4 py-3`}
+      className={`${cockpitGlass} pointer-events-auto mx-2 px-3 py-2`}
     >
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/80">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-400/80">
             Live driving
           </p>
-          <p data-testid="cockpit-speed" className="mt-1 text-2xl font-bold text-white">
+          <p data-testid="cockpit-speed" className="text-xl font-bold leading-tight text-white">
             {Math.round(speedMph)}{" "}
-            <span className="text-sm font-semibold text-zinc-400">MPH</span>
+            <span className="text-xs font-semibold text-zinc-500">MPH</span>
           </p>
         </div>
-        <div className="relative flex h-14 w-24 items-end justify-center">
-          <svg viewBox="0 0 100 50" className="h-12 w-full overflow-visible">
+        <div className="relative flex h-12 w-20 items-end justify-center">
+          <svg viewBox="0 0 100 50" className="h-10 w-full overflow-visible" aria-hidden>
             <path
               d="M 8 48 A 42 42 0 0 1 92 48"
               fill="none"
@@ -54,16 +54,14 @@ export function LiveDrivingConsole({
           </svg>
           <span
             data-testid="cockpit-efficiency-gauge"
-            className="absolute bottom-0 text-lg font-bold text-cyan-300"
+            className="absolute bottom-0 text-base font-bold text-cyan-300"
           >
             {efficiencyScore}
           </span>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-            Drive time
-          </p>
-          <p data-testid="cockpit-drive-time" className="mt-1 text-sm font-semibold text-white">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Drive</p>
+          <p data-testid="cockpit-drive-time" className="text-xs font-semibold text-white">
             {driveTimeLabel}
           </p>
         </div>
