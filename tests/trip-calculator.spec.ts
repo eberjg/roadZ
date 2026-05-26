@@ -19,7 +19,8 @@ test.describe("Trip calculator", () => {
     await expect(page.getByTestId("result-fuel-cost")).toContainText("$440.00");
     await expect(page.getByTestId("result-drive-time")).toContainText("55 hr");
 
-    await expect(page.getByTestId("route-card")).toContainText("33301 → 98402");
+    await expect(page.getByTestId("route-card")).toContainText("33301");
+    await expect(page.getByTestId("route-card")).toContainText("98402");
     await expect(page.getByTestId("route-card")).toContainText("3,300 miles");
     await expect(page.getByTestId("fuel-card")).toContainText("$440.00");
   });

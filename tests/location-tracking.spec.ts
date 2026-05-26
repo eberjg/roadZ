@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { primeOnboardingComplete } from "./helpers/onboarding";
+import { primeOnboardingComplete, primeReturningDriver } from "./helpers/onboarding";
+import { enableLiveGps } from "./helpers/gps";
 
 async function mockGeolocation(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
@@ -111,7 +112,7 @@ test.describe("Live GPS tracker", () => {
     });
     await startTrip(page);
 
-    await page.getByTestId("gps-enable-btn").click();
+    await enableLiveGps(page);
     await expect(page.getByTestId("gps-permission")).toContainText("granted");
     await expect(page.getByTestId("tracker-mode")).toContainText("live");
   });
@@ -120,15 +121,16 @@ test.describe("Live GPS tracker", () => {
     await mockGeolocation(page);
     await startTrip(page);
 
-    await page.getByTestId("gps-enable-btn").click();
+    await enableLiveGps(page);
     await expect(page.getByTestId("gps-permission")).toContainText("granted");
     await expect(page.getByTestId("tracker-mode")).toContainText("live");
   });
 
   test("auto-progress updates from movement", async ({ page }) => {
     await mockGeolocation(page);
+    await primeReturningDriver(page);
     await startTrip(page);
-    await page.getByTestId("gps-enable-btn").click();
+    await expect(page.getByTestId("tracker-mode")).toContainText("live");
 
     const now = Date.now();
     await emitPosition(page, {
@@ -152,8 +154,9 @@ test.describe("Live GPS tracker", () => {
 
   test("detects idle and rest states", async ({ page }) => {
     await mockGeolocation(page);
+    await primeReturningDriver(page);
     await startTrip(page);
-    await page.getByTestId("gps-enable-btn").click();
+    await expect(page.getByTestId("tracker-mode")).toContainText("live");
 
     const now = Date.now();
     await emitPosition(page, { lat: 26.12, lng: -80.13, speed: 12, timestamp: now });
@@ -176,8 +179,9 @@ test.describe("Live GPS tracker", () => {
 
   test("renders session timer metrics", async ({ page }) => {
     await mockGeolocation(page);
+    await primeReturningDriver(page);
     await startTrip(page);
-    await page.getByTestId("gps-enable-btn").click();
+    await expect(page.getByTestId("tracker-mode")).toContainText("live");
 
     const now = Date.now();
     await emitPosition(page, { lat: 26.12, lng: -80.13, speed: 11, timestamp: now });
@@ -195,7 +199,7 @@ test.describe("Live GPS tracker", () => {
   test("manual fallback mode keeps slider control", async ({ page }) => {
     await mockGeolocation(page);
     await startTrip(page);
-    await page.getByTestId("gps-enable-btn").click();
+    await enableLiveGps(page);
     await page.getByTestId("gps-manual-mode-btn").click();
 
     await expect(page.getByTestId("tracker-mode")).toContainText("manual");
@@ -206,7 +210,7 @@ test.describe("Live GPS tracker", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockGeolocation(page);
     await startTrip(page);
-    await page.getByTestId("gps-enable-btn").click();
+    await enableLiveGps(page);
 
     await expect(page.getByTestId("gps-status")).toBeVisible();
     await expect(page.getByTestId("movement-status")).toBeVisible();

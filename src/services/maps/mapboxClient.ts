@@ -46,6 +46,32 @@ export function isMapboxConfigured(): boolean {
   return Boolean(getAccessToken());
 }
 
+export async function geocodePlace(query: string): Promise<LngLat & { label: string }> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new MapboxClientError("Mapbox token is not configured.", "UNAVAILABLE");
+  }
+
+  const encoded = encodeURIComponent(query.trim());
+  const url =
+    `${MAPBOX_BASE}/geocoding/v5/mapbox.places/${encoded}.json` +
+    `?country=US&limit=1&access_token=${token}`;
+
+  const response = await fetchWithTimeout(url);
+  if (!response.ok) {
+    throw new MapboxClientError(`Geocoding failed (${response.status}).`, "UNAVAILABLE");
+  }
+
+  const data = (await response.json()) as MapboxGeocodeResponse;
+  const feature = data.features?.[0];
+  if (!feature?.center) {
+    throw new MapboxClientError("Address could not be geocoded.", "MALFORMED");
+  }
+
+  const [lng, lat] = feature.center;
+  return { lng, lat, label: feature.place_name ?? query };
+}
+
 export async function geocodeZip(zip: string): Promise<LngLat & { label: string }> {
   const token = getAccessToken();
   if (!token) {

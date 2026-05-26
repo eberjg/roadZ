@@ -1,9 +1,14 @@
 import { formatDriveTime } from "@/services/trip/calculateTrip";
 import { getMockDistance } from "@/services/trip/mockDistance";
-import { geocodeZip, getDrivingRoute, isMapboxConfigured, MapboxClientError } from "./mapboxClient";
-import type { RouteData, RouteErrorCode } from "./types";
-
-const US_ZIP_PATTERN = /^\d{5}$/;
+import {
+  geocodePlace,
+  geocodeZip,
+  getDrivingRoute,
+  isMapboxConfigured,
+  MapboxClientError,
+} from "./mapboxClient";
+import { isUsZip, resolvePlaceKey } from "./placeResolver";
+import type { LngLat, RouteData, RouteErrorCode } from "./types";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const METERS_PER_MILE = 1609.344;
 const AVERAGE_SPEED_MPH = 60;
@@ -31,11 +36,11 @@ export class RouteServiceError extends Error {
 }
 
 export function validateUsZip(zip: string): boolean {
-  return US_ZIP_PATTERN.test(zip.trim());
+  return isUsZip(zip);
 }
 
-function cacheKey(startZip: string, destinationZip: string): string {
-  return `${startZip.trim()}|${destinationZip.trim()}`;
+function cacheKey(startPlace: string, destinationPlace: string): string {
+  return `${resolvePlaceKey(startPlace)}|${resolvePlaceKey(destinationPlace)}`;
 }
 
 function readCache(key: string): RouteData | null {
@@ -74,16 +79,17 @@ function interpolatePolyline(
   return coordinates;
 }
 
-function getFallbackCoordinates(zip: string): { lng: number; lat: number; label: string } {
-  const known = ZIP_COORDINATES[zip.trim()];
+function getFallbackCoordinates(place: string): { lng: number; lat: number; label: string } {
+  const zipKey = resolvePlaceKey(place);
+  const known = ZIP_COORDINATES[zipKey];
   if (known) {
-    return known;
+    return { ...known, label: place.trim() || known.label };
   }
-  const hash = zip.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const hash = place.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return {
     lng: -98 + (hash % 20),
     lat: 35 + (hash % 10),
-    label: `ZIP ${zip}`,
+    label: place.trim() || `Place ${zipKey}`,
   };
 }
 
@@ -94,10 +100,13 @@ function shouldUseFallback(): boolean {
   );
 }
 
-function buildFallbackRoute(startZip: string, destinationZip: string): RouteData {
-  const start = getFallbackCoordinates(startZip);
-  const end = getFallbackCoordinates(destinationZip);
-  const distanceMiles = getMockDistance(startZip, destinationZip);
+function buildFallbackRoute(startPlace: string, destinationPlace: string): RouteData {
+  const start = getFallbackCoordinates(startPlace);
+  const end = getFallbackCoordinates(destinationPlace);
+  const distanceMiles = getMockDistance(
+    resolvePlaceKey(startPlace),
+    resolvePlaceKey(destinationPlace),
+  );
   const durationSeconds = Math.round((distanceMiles / AVERAGE_SPEED_MPH) * 3600);
 
   return {
@@ -111,9 +120,16 @@ function buildFallbackRoute(startZip: string, destinationZip: string): RouteData
   };
 }
 
-async function buildMapboxRoute(startZip: string, destinationZip: string): Promise<RouteData> {
-  const start = await geocodeZip(startZip);
-  const end = await geocodeZip(destinationZip);
+async function resolvePlace(place: string): Promise<LngLat & { label: string }> {
+  if (isUsZip(place)) {
+    return geocodeZip(place.trim());
+  }
+  return geocodePlace(place);
+}
+
+async function buildMapboxRoute(startPlace: string, destinationPlace: string): Promise<RouteData> {
+  const start = await resolvePlace(startPlace);
+  const end = await resolvePlace(destinationPlace);
   const driving = await getDrivingRoute(start, end);
 
   const distanceMiles = metersToMiles(driving.distanceMeters);
@@ -129,14 +145,14 @@ async function buildMapboxRoute(startZip: string, destinationZip: string): Promi
   };
 }
 
-export async function getRoute(startZip: string, destinationZip: string): Promise<RouteData> {
-  const start = startZip.trim();
-  const destination = destinationZip.trim();
+export async function getRoute(startPlace: string, destinationPlace: string): Promise<RouteData> {
+  const start = startPlace.trim();
+  const destination = destinationPlace.trim();
 
-  if (!validateUsZip(start) || !validateUsZip(destination)) {
+  if (!start || !destination) {
     throw new RouteServiceError(
-      "Enter valid 5-digit US ZIP codes for start and destination.",
-      "INVALID_ZIP",
+      "Enter a start and destination (address or ZIP).",
+      "INVALID_PLACE",
     );
   }
 
@@ -159,7 +175,10 @@ export async function getRoute(startZip: string, destinationZip: string): Promis
           throw new RouteServiceError("Route request timed out. Try again.", "TIMEOUT");
         }
         if (error.code === "MALFORMED") {
-          throw new RouteServiceError("Could not resolve one or both ZIP codes.", "INVALID_ZIP");
+          throw new RouteServiceError(
+            "Could not resolve start or destination. Check the address.",
+            "INVALID_PLACE",
+          );
         }
         route = buildFallbackRoute(start, destination);
       } else {

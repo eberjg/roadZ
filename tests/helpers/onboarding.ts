@@ -4,6 +4,13 @@ import type { Page } from "@playwright/test";
 export async function primeOnboardingComplete(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem("rc_onboarding_complete", "true");
+  });
+}
+
+/** Return visit with GPS already allowed (matches post-onboarding production). */
+export async function primeReturningDriver(page: Page) {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("rc_onboarding_complete", "true");
     window.localStorage.setItem("rc_permission_state", "granted");
   });
 }

@@ -5,7 +5,13 @@ export type GPSPermissionState =
   | "denied"
   | "unsupported";
 
-export type GPSHealthState = "good" | "stale" | "low_accuracy" | "denied" | "unavailable";
+export type GPSHealthState =
+  | "good"
+  | "acquiring"
+  | "stale"
+  | "low_accuracy"
+  | "denied"
+  | "unavailable";
 
 export type MovementState = "driving" | "stopped" | "idle" | "resting" | "parked";
 

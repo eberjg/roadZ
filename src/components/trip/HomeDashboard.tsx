@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { DashboardCard } from "@/components/DashboardCard";
 import { motion } from "@/components/ui/motion";
 import { ui } from "@/components/ui/theme";
@@ -56,13 +56,21 @@ export function HomeDashboard() {
           <p className={ui.subtitle}>Your trip at a glance</p>
         </header>
 
-        <TripPlanner
-          onCalculated={(input, result, route) => {
-            setTrip({ input, result, route });
-            setCompletedDistanceMiles(0);
-            setTrackerMode("manual");
-          }}
-        />
+        <Suspense
+          fallback={
+            <section className={ui.panelMuted}>
+              <p className={ui.body}>Loading trip planner…</p>
+            </section>
+          }
+        >
+          <TripPlanner
+            onCalculated={(input, result, route) => {
+              setTrip({ input, result, route });
+              setCompletedDistanceMiles(0);
+              setTrackerMode("manual");
+            }}
+          />
+        </Suspense>
 
         {trip && fuelIntelligence ? (
           <>
@@ -126,7 +134,7 @@ export function HomeDashboard() {
           {trip ? (
             <>
               <p className={ui.value}>
-                {trip.input.startZip} → {trip.input.destinationZip}
+                {trip.input.startPlace} → {trip.input.destinationPlace}
               </p>
               <p className={`mt-2 ${ui.body}`}>
                 {trip.route.distanceMiles.toLocaleString()} miles · {trip.route.etaLabel}

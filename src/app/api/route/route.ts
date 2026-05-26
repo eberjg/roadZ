@@ -14,23 +14,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const startZip = body.startZip?.trim() ?? "";
-  const destinationZip = body.destinationZip?.trim() ?? "";
+  const start = (body.start ?? body.startZip ?? "").trim();
+  const destination = (body.destination ?? body.destinationZip ?? "").trim();
 
-  if (!startZip || !destinationZip) {
+  if (!start || !destination) {
     return NextResponse.json(
-      { error: "Start and destination ZIP codes are required.", code: "MALFORMED" },
+      { error: "Start and destination are required (address or ZIP).", code: "MALFORMED" },
       { status: 400 },
     );
   }
 
   try {
-    const route = await getRoute(startZip, destinationZip);
+    const route = await getRoute(start, destination);
     return NextResponse.json(route);
   } catch (error) {
     if (error instanceof RouteServiceError) {
       const status =
-        error.code === "INVALID_ZIP" ? 400 : error.code === "TIMEOUT" ? 504 : 503;
+        error.code === "INVALID_ZIP" || error.code === "INVALID_PLACE"
+          ? 400
+          : error.code === "TIMEOUT"
+            ? 504
+            : 503;
       return NextResponse.json({ error: error.message, code: error.code }, { status });
     }
     return NextResponse.json(

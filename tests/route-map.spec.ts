@@ -49,16 +49,16 @@ test.describe("Route map and live routing", () => {
     await expect(page.getByTestId("route-summary")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("shows error for invalid ZIP codes", async ({ page }) => {
+  test("shows error when start or destination is missing", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByTestId("input-start-zip").fill("abc");
+    await page.getByTestId("input-start-zip").fill("");
     await page.getByTestId("input-destination-zip").fill("98402");
     await page.getByTestId("input-vehicle-mpg").fill("30");
     await page.getByTestId("input-gas-price").fill("4");
     await page.getByTestId("btn-calculate-trip").click();
 
-    await expect(page.getByTestId("trip-planner-error")).toContainText("valid 5-digit");
+    await expect(page.getByTestId("trip-planner-error")).toContainText("start and destination");
   });
 
   test("renders route UI on mobile viewport", async ({ page }) => {

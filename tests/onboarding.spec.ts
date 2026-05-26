@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { primeOnboardingComplete, resetOnboardingState } from "./helpers/onboarding";
+import {
+  primeOnboardingComplete,
+  primeReturningDriver,
+  resetOnboardingState,
+} from "./helpers/onboarding";
 
 async function mockGeolocationGranted(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
@@ -108,7 +112,7 @@ test.describe("First-launch onboarding", () => {
   });
 
   test("returning user skips onboarding", async ({ page }) => {
-    await primeOnboardingComplete(page);
+    await primeReturningDriver(page);
     await page.goto("/");
     await expect(page.getByTestId("onboarding-welcome")).toHaveCount(0);
     await expect(page.getByTestId("dashboard-title")).toBeVisible();

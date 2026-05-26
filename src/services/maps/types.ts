@@ -18,8 +18,12 @@ export type RouteData = {
 };
 
 export type RouteRequest = {
-  startZip: string;
-  destinationZip: string;
+  /** @deprecated Use `start` — kept for compatibility */
+  startZip?: string;
+  /** @deprecated Use `destination` — kept for compatibility */
+  destinationZip?: string;
+  start?: string;
+  destination?: string;
 };
 
 export type MapboxGeocodeFeature = {
@@ -47,6 +51,7 @@ export type MapboxDirectionsResponse = {
 
 export type RouteErrorCode =
   | "INVALID_ZIP"
+  | "INVALID_PLACE"
   | "TIMEOUT"
   | "UNAVAILABLE"
   | "MALFORMED";

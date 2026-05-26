@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ErrorState } from "@/components/map/ErrorState";
 import { LoadingState } from "@/components/map/LoadingState";
 import { ui } from "@/components/ui/theme";
+import { extractUsZip } from "@/services/maps/placeResolver";
 import { calculateTrip } from "@/services/trip/calculateTrip";
+import { readMapHandoffFromSearch } from "@/services/trip/mapDeepLink";
 import type { RouteData } from "@/services/maps/types";
 import type { TripInput, TripResult } from "@/services/trip/types";
 import { TripResults } from "./TripResults";
@@ -13,9 +16,29 @@ type TripPlannerProps = {
   onCalculated?: (input: TripInput, result: TripResult, route: RouteData) => void;
 };
 
+function buildTripInput(
+  startPlace: string,
+  destinationPlace: string,
+  vehicleMpg: number,
+  gasPrice: number,
+): TripInput {
+  const startZip = extractUsZip(startPlace) ?? startPlace.trim();
+  const destinationZip = extractUsZip(destinationPlace) ?? destinationPlace.trim();
+  return {
+    startPlace: startPlace.trim(),
+    destinationPlace: destinationPlace.trim(),
+    startZip,
+    destinationZip,
+    vehicleMpg,
+    gasPrice,
+  };
+}
+
 export function TripPlanner({ onCalculated }: TripPlannerProps) {
-  const [startZip, setStartZip] = useState("");
-  const [destinationZip, setDestinationZip] = useState("");
+  const searchParams = useSearchParams();
+  const mapHandoff = readMapHandoffFromSearch(searchParams.toString());
+  const [startPlace, setStartPlace] = useState(mapHandoff.start ?? "");
+  const [destinationPlace, setDestinationPlace] = useState(mapHandoff.destination ?? "");
   const [vehicleMpg, setVehicleMpg] = useState("");
   const [gasPrice, setGasPrice] = useState("");
   const [result, setResult] = useState<TripResult | null>(null);
@@ -29,8 +52,8 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
     const mpg = Number(vehicleMpg);
     const price = Number(gasPrice);
 
-    if (!startZip.trim() || !destinationZip.trim()) {
-      setError("Enter both ZIP codes.");
+    if (!startPlace.trim() || !destinationPlace.trim()) {
+      setError("Enter a start and destination (address or ZIP).");
       return;
     }
     if (!Number.isFinite(mpg) || mpg <= 0) {
@@ -42,12 +65,7 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
       return;
     }
 
-    const input: TripInput = {
-      startZip: startZip.trim(),
-      destinationZip: destinationZip.trim(),
-      vehicleMpg: mpg,
-      gasPrice: price,
-    };
+    const input = buildTripInput(startPlace, destinationPlace, mpg, price);
 
     setIsLoading(true);
 
@@ -56,8 +74,8 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          startZip: input.startZip,
-          destinationZip: input.destinationZip,
+          start: input.startPlace,
+          destination: input.destinationPlace,
         }),
       });
 
@@ -67,7 +85,7 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
         const message =
           "error" in payload && payload.error
             ? payload.error
-            : "Route is unavailable. Check ZIP codes and try again.";
+            : "Route is unavailable. Check addresses and try again.";
         setError(message);
         return;
       }
@@ -91,7 +109,7 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
     <section data-testid="trip-planner" className={ui.panel}>
       <h2 className={ui.h2}>Trip Planner</h2>
       <p className={`mt-2 ${ui.body}`}>
-        Enter your trip details to calculate live route estimates
+        Paste from Apple Maps or Google Maps — full address or ZIP works.
       </p>
 
       <form
@@ -102,29 +120,27 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
         }}
       >
         <label className="block">
-          <span className={ui.label}>Start ZIP</span>
+          <span className={ui.label}>Start</span>
           <input
             data-testid="input-start-zip"
             type="text"
-            inputMode="numeric"
-            autoComplete="postal-code"
-            placeholder="e.g. 33301"
-            value={startZip}
-            onChange={(event) => setStartZip(event.target.value)}
+            autoComplete="street-address"
+            placeholder="e.g. 123 Main St, Miami FL or 33301"
+            value={startPlace}
+            onChange={(event) => setStartPlace(event.target.value)}
             className={ui.input}
           />
         </label>
 
         <label className="block">
-          <span className={ui.label}>Destination ZIP</span>
+          <span className={ui.label}>Destination</span>
           <input
             data-testid="input-destination-zip"
             type="text"
-            inputMode="numeric"
-            autoComplete="postal-code"
-            placeholder="e.g. 98402"
-            value={destinationZip}
-            onChange={(event) => setDestinationZip(event.target.value)}
+            autoComplete="street-address"
+            placeholder="e.g. 1600 Broadway, Tacoma WA or 98402"
+            value={destinationPlace}
+            onChange={(event) => setDestinationPlace(event.target.value)}
             className={ui.input}
           />
         </label>

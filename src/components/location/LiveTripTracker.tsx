@@ -37,7 +37,11 @@ export function LiveTripTracker({
     async function setup() {
       const stored = getStoredPermissionState();
       if (stored === "granted") {
-        setTracking((previous) => applyPermissionState(previous, "granted"));
+        setTracking((previous) => ({
+          ...applyPermissionState(previous, "granted"),
+          mode: "live",
+          error: null,
+        }));
         return;
       }
       if (stored === "denied") {

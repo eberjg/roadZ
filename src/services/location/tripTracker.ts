@@ -25,7 +25,7 @@ function deriveGpsHealth(sample: LocationSample | null, permission: TripTracking
     return "denied";
   }
   if (!sample) {
-    return "unavailable";
+    return permission === "granted" ? "acquiring" : "unavailable";
   }
   if (locationIsStale(sample)) {
     return "stale";
@@ -84,11 +84,18 @@ export function applyPermissionState(
   previous: TripTrackingState,
   permission: TripTrackingState["permission"],
 ): TripTrackingState {
+  let mode = previous.mode;
+  if (permission === "granted") {
+    mode = "live";
+  } else if (permission === "denied" || permission === "unsupported") {
+    mode = "manual";
+  }
+
   return {
     ...previous,
     permission,
     gpsHealth: deriveGpsHealth(previous.currentSample, permission),
-    mode: permission === "granted" ? previous.mode : "manual",
+    mode,
   };
 }
 
