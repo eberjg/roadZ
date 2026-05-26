@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/components/ui/theme";
 import type { OperationalState } from "@/services/operations/types";
 
 type TripProgressProps = {
@@ -16,14 +17,11 @@ export function TripProgress({
   const { progress } = state;
 
   return (
-    <section
-      data-testid="trip-progress"
-      className="rounded-2xl border-2 border-zinc-900 bg-white p-6 shadow-sm"
-    >
-      <h3 className="text-2xl font-bold text-zinc-900">Trip Progress</h3>
+    <section data-testid="trip-progress" className={ui.panelNested}>
+      <h3 className={ui.h3}>Trip Progress</h3>
 
       <label className="mt-5 block">
-        <span className="text-lg font-semibold text-zinc-800">
+        <span className={ui.label}>
           Completed miles ({progress.completedDistanceMiles.toLocaleString()} /{" "}
           {progress.totalDistanceMiles.toLocaleString()})
         </span>
@@ -36,56 +34,37 @@ export function TripProgress({
             step={10}
             value={progress.completedDistanceMiles}
             onChange={(event) => onProgressChange(Number(event.target.value))}
-            className="mt-3 h-4 w-full cursor-pointer accent-zinc-900"
+            className="mt-3 h-4 w-full cursor-pointer accent-sky-400"
           />
         ) : (
-          <p data-testid="trip-progress-live-mode" className="mt-3 text-lg font-semibold text-zinc-700">
+          <p data-testid="trip-progress-live-mode" className={`mt-3 ${ui.body} font-semibold`}>
             Live GPS auto-progress enabled
           </p>
         )}
       </label>
 
-      <div
-        data-testid="trip-completion-percent"
-        className="mt-4 text-4xl font-bold text-zinc-900"
-      >
+      <div data-testid="trip-completion-percent" className={`mt-4 ${ui.valueHero}`}>
         {progress.completionPercent}% complete
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div
-          data-testid="trip-remaining-distance"
-          className="rounded-xl border-2 border-zinc-900 bg-zinc-50 p-4"
-        >
-          <p className="text-sm font-semibold uppercase text-zinc-600">Remaining</p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900">
+        <div data-testid="trip-remaining-distance" className={ui.panelInset}>
+          <p className={ui.statLabel}>Remaining</p>
+          <p className={`mt-2 ${ui.valueLg}`}>
             {progress.remainingDistanceMiles.toLocaleString()} mi
           </p>
         </div>
-        <div
-          data-testid="trip-estimated-arrival"
-          className="rounded-xl border-2 border-zinc-900 bg-zinc-50 p-4"
-        >
-          <p className="text-sm font-semibold uppercase text-zinc-600">Est. arrival</p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900">
-            {progress.estimatedArrivalLabel}
-          </p>
+        <div data-testid="trip-estimated-arrival" className={ui.panelInset}>
+          <p className={ui.statLabel}>Est. arrival</p>
+          <p className={`mt-2 ${ui.valueLg}`}>{progress.estimatedArrivalLabel}</p>
         </div>
-        <div
-          data-testid="trip-session-duration"
-          className="rounded-xl border-2 border-zinc-900 bg-zinc-50 p-4"
-        >
-          <p className="text-sm font-semibold uppercase text-zinc-600">Driving session</p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900">
-            {progress.drivingSessionDurationLabel}
-          </p>
+        <div data-testid="trip-session-duration" className={ui.panelInset}>
+          <p className={ui.statLabel}>Driving session</p>
+          <p className={`mt-2 ${ui.valueLg}`}>{progress.drivingSessionDurationLabel}</p>
         </div>
-        <div
-          data-testid="trip-next-stop-eta"
-          className="rounded-xl border-2 border-zinc-900 bg-zinc-50 p-4"
-        >
-          <p className="text-sm font-semibold uppercase text-zinc-600">Next stop ETA</p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900">
+        <div data-testid="trip-next-stop-eta" className={ui.panelInset}>
+          <p className={ui.statLabel}>Next stop ETA</p>
+          <p className={`mt-2 ${ui.valueLg}`}>
             {progress.nextStopEtaLabel ?? "At destination"}
           </p>
         </div>

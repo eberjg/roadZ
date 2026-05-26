@@ -14,6 +14,7 @@ import {
   buildInitialTrackingState,
 } from "@/services/location/tripTracker";
 import type { TripTrackingState } from "@/services/location/types";
+import { ui } from "@/components/ui/theme";
 import { DrivingSession } from "./DrivingSession";
 import { GPSStatus } from "./GPSStatus";
 import { MovementStatus } from "./MovementStatus";
@@ -136,12 +137,9 @@ export function LiveTripTracker({
   };
 
   return (
-    <section
-      data-testid="live-trip-tracker"
-      className="rounded-2xl border-2 border-zinc-900 bg-zinc-50 p-4 shadow-sm"
-    >
-      <h2 className="text-2xl font-bold text-zinc-900">Live Trip Tracker</h2>
-      <p className="mt-1 text-lg text-zinc-700">
+    <section data-testid="live-trip-tracker" className={ui.panel}>
+      <h2 className={ui.h2}>Live Trip Tracker</h2>
+      <p className={`mt-1 ${ui.body}`}>
         Mode: <span data-testid="tracker-mode">{tracking.mode}</span>
       </p>
       <div className="mt-4 flex flex-col gap-4">

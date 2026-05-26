@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ErrorState } from "@/components/map/ErrorState";
 import { LoadingState } from "@/components/map/LoadingState";
+import { ui } from "@/components/ui/theme";
 import { calculateTrip } from "@/services/trip/calculateTrip";
 import type { RouteData } from "@/services/maps/types";
 import type { TripInput, TripResult } from "@/services/trip/types";
@@ -11,9 +12,6 @@ import { TripResults } from "./TripResults";
 type TripPlannerProps = {
   onCalculated?: (input: TripInput, result: TripResult, route: RouteData) => void;
 };
-
-const inputClassName =
-  "mt-2 w-full rounded-xl border-2 border-zinc-900 bg-white px-4 py-4 text-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-4 focus:ring-zinc-300";
 
 export function TripPlanner({ onCalculated }: TripPlannerProps) {
   const [startZip, setStartZip] = useState("");
@@ -90,14 +88,9 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
   }
 
   return (
-    <section
-      data-testid="trip-planner"
-      className="rounded-2xl border-2 border-zinc-900 bg-white p-6 shadow-sm"
-    >
-      <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
-        Trip Planner
-      </h2>
-      <p className="mt-2 text-lg text-zinc-700">
+    <section data-testid="trip-planner" className={ui.panel}>
+      <h2 className={ui.h2}>Trip Planner</h2>
+      <p className={`mt-2 ${ui.body}`}>
         Enter your trip details to calculate live route estimates
       </p>
 
@@ -109,7 +102,7 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
         }}
       >
         <label className="block">
-          <span className="text-lg font-semibold text-zinc-900">Start ZIP</span>
+          <span className={ui.label}>Start ZIP</span>
           <input
             data-testid="input-start-zip"
             type="text"
@@ -118,12 +111,12 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
             placeholder="e.g. 33301"
             value={startZip}
             onChange={(event) => setStartZip(event.target.value)}
-            className={inputClassName}
+            className={ui.input}
           />
         </label>
 
         <label className="block">
-          <span className="text-lg font-semibold text-zinc-900">Destination ZIP</span>
+          <span className={ui.label}>Destination ZIP</span>
           <input
             data-testid="input-destination-zip"
             type="text"
@@ -132,12 +125,12 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
             placeholder="e.g. 98402"
             value={destinationZip}
             onChange={(event) => setDestinationZip(event.target.value)}
-            className={inputClassName}
+            className={ui.input}
           />
         </label>
 
         <label className="block">
-          <span className="text-lg font-semibold text-zinc-900">Vehicle MPG</span>
+          <span className={ui.label}>Vehicle MPG</span>
           <input
             data-testid="input-vehicle-mpg"
             type="number"
@@ -146,12 +139,12 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
             placeholder="e.g. 30"
             value={vehicleMpg}
             onChange={(event) => setVehicleMpg(event.target.value)}
-            className={inputClassName}
+            className={ui.input}
           />
         </label>
 
         <label className="block">
-          <span className="text-lg font-semibold text-zinc-900">Gas Price ($/gal)</span>
+          <span className={ui.label}>Gas Price ($/gal)</span>
           <input
             data-testid="input-gas-price"
             type="number"
@@ -160,13 +153,11 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
             placeholder="e.g. 4.00"
             value={gasPrice}
             onChange={(event) => setGasPrice(event.target.value)}
-            className={inputClassName}
+            className={ui.input}
           />
         </label>
 
-        {error ? (
-          <ErrorState message={error} testId="trip-planner-error" />
-        ) : null}
+        {error ? <ErrorState message={error} testId="trip-planner-error" /> : null}
 
         {isLoading ? <LoadingState /> : null}
 
@@ -174,7 +165,7 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
           data-testid="btn-calculate-trip"
           type="submit"
           disabled={isLoading}
-          className="mt-2 w-full rounded-xl bg-zinc-900 px-6 py-5 text-xl font-bold text-white transition-colors hover:bg-zinc-700 active:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-500"
+          className={`mt-2 ${ui.btnPrimaryBlock}`}
         >
           Calculate Trip
         </button>

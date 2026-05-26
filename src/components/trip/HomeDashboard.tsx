@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DashboardCard } from "@/components/DashboardCard";
+import { ui } from "@/components/ui/theme";
 import { FuelPanel } from "@/components/fuel/FuelPanel";
 import { FuelWarnings } from "@/components/fuel/FuelWarnings";
 import { StopRecommendation } from "@/components/fuel/StopRecommendation";
@@ -42,16 +43,16 @@ export function HomeDashboard() {
   }, [trip]);
 
   return (
-    <div className="min-h-full bg-zinc-100">
-      <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-8">
+    <div className={ui.page}>
+      <main className={ui.main}>
         <header>
-          <h1
-            data-testid="dashboard-title"
-            className="text-4xl font-bold tracking-tight text-zinc-900"
-          >
+          <p className="text-sm font-semibold uppercase tracking-widest text-sky-400/90">
+            Road Companion Pilot
+          </p>
+          <h1 data-testid="dashboard-title" className={`mt-1 ${ui.title}`}>
             Road Companion
           </h1>
-          <p className="mt-2 text-lg text-zinc-700">Your trip at a glance</p>
+          <p className={ui.subtitle}>Your trip at a glance</p>
         </header>
 
         <TripPlanner
@@ -91,40 +92,31 @@ export function HomeDashboard() {
           </>
         ) : (
           <>
-            <section
-              data-testid="live-trip-tracker"
-              className="rounded-2xl border-2 border-zinc-300 bg-white p-6"
-            >
-              <h2 className="text-2xl font-bold text-zinc-900">Live Trip Tracker</h2>
-              <p className="mt-2 text-lg text-zinc-700">
+            <section data-testid="live-trip-tracker" className={ui.panelMuted}>
+              <h2 className={ui.h2}>Live Trip Tracker</h2>
+              <p className={`mt-2 ${ui.body}`}>
                 Start a trip to enable GPS tracking and movement detection
               </p>
             </section>
-            <section
-              data-testid="operational-dashboard"
-              className="rounded-2xl border-2 border-zinc-300 bg-white p-6"
-            >
-              <h2 className="text-2xl font-bold text-zinc-900">Operational Co-Pilot</h2>
-              <p className="mt-2 text-lg text-zinc-700">
+            <section data-testid="operational-dashboard" className={ui.panelMuted}>
+              <h2 className={ui.h2}>Operational Co-Pilot</h2>
+              <p className={`mt-2 ${ui.body}`}>
                 Calculate a trip to activate live operational tracking
               </p>
             </section>
-            <section
-              data-testid="environmental-dashboard"
-              className="rounded-2xl border-2 border-zinc-300 bg-white p-6"
-            >
-              <h2 className="text-2xl font-bold text-zinc-900">Environmental Awareness</h2>
-              <p className="mt-2 text-lg text-zinc-700">
+            <section data-testid="environmental-dashboard" className={ui.panelMuted}>
+              <h2 className={ui.h2}>Environmental Awareness</h2>
+              <p className={`mt-2 ${ui.body}`}>
                 Calculate a trip for weather and road risk intelligence
               </p>
             </section>
             <DashboardCard title="Fuel Intelligence" testId="fuel-card">
-              <p className="text-xl font-semibold text-zinc-900">No fuel data yet</p>
-              <p className="mt-2 text-lg text-zinc-700">Calculate a trip to see fuel intelligence</p>
+              <p className={ui.value}>No fuel data yet</p>
+              <p className={`mt-2 ${ui.body}`}>Calculate a trip to see fuel intelligence</p>
             </DashboardCard>
             <DashboardCard title="Stop Recommendation" testId="stop-card">
-              <p className="text-xl font-semibold text-zinc-900">No stop recommendation yet</p>
-              <p className="mt-2 text-lg text-zinc-700">Calculate a trip for smart stop planning</p>
+              <p className={ui.value}>No stop recommendation yet</p>
+              <p className={`mt-2 ${ui.body}`}>Calculate a trip for smart stop planning</p>
             </DashboardCard>
           </>
         )}
@@ -132,17 +124,17 @@ export function HomeDashboard() {
         <DashboardCard title="Route Summary" testId="route-card">
           {trip ? (
             <>
-              <p className="text-xl font-semibold text-zinc-900">
+              <p className={ui.value}>
                 {trip.input.startZip} → {trip.input.destinationZip}
               </p>
-              <p className="mt-2 text-lg text-zinc-700">
+              <p className={`mt-2 ${ui.body}`}>
                 {trip.route.distanceMiles.toLocaleString()} miles · {trip.route.etaLabel}
               </p>
             </>
           ) : (
             <>
-              <p className="text-xl font-semibold text-zinc-900">No route calculated yet</p>
-              <p className="mt-2 text-lg text-zinc-700">Use Trip Planner above</p>
+              <p className={ui.value}>No route calculated yet</p>
+              <p className={`mt-2 ${ui.body}`}>Use Trip Planner above</p>
             </>
           )}
         </DashboardCard>

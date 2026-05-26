@@ -5,23 +5,23 @@ export const statusStyles: Record<
   { badge: string; border: string; text: string }
 > = {
   NORMAL: {
-    badge: "bg-emerald-100 text-emerald-950 border-emerald-700",
-    border: "border-emerald-700",
-    text: "text-emerald-950",
+    badge: "border-emerald-500/50 bg-emerald-500/15 text-emerald-300",
+    border: "border-emerald-500/50",
+    text: "text-emerald-300",
   },
   CAUTION: {
-    badge: "bg-amber-100 text-amber-950 border-amber-600",
-    border: "border-amber-600",
-    text: "text-amber-950",
+    badge: "border-amber-500/50 bg-amber-500/15 text-amber-200",
+    border: "border-amber-500/50",
+    text: "text-amber-200",
   },
   HIGH_RISK: {
-    badge: "bg-orange-100 text-orange-950 border-orange-700",
-    border: "border-orange-700",
-    text: "text-orange-950",
+    badge: "border-orange-500/50 bg-orange-500/15 text-orange-200",
+    border: "border-orange-500/50",
+    text: "text-orange-200",
   },
   CRITICAL: {
-    badge: "bg-red-100 text-red-950 border-red-700",
-    border: "border-red-700",
-    text: "text-red-950",
+    badge: "border-red-500/50 bg-red-500/15 text-red-300",
+    border: "border-red-500/50",
+    text: "text-red-300",
   },
 };

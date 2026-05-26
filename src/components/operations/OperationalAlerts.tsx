@@ -1,3 +1,4 @@
+import { ui } from "@/components/ui/theme";
 import type { OperationalState } from "@/services/operations/types";
 import { statusStyles } from "./statusStyles";
 
@@ -8,11 +9,8 @@ type OperationalAlertsProps = {
 export function OperationalAlerts({ state }: OperationalAlertsProps) {
   if (state.alerts.length === 0) {
     return (
-      <section
-        data-testid="operational-alerts"
-        className="rounded-2xl border-2 border-emerald-700 bg-emerald-50 p-5"
-      >
-        <p className="text-lg font-semibold text-emerald-950">No active operational alerts</p>
+      <section data-testid="operational-alerts" className={ui.successBox}>
+        <p className={ui.successText}>No active operational alerts</p>
       </section>
     );
   }

@@ -6,6 +6,7 @@ import type { FuelIntelligence } from "@/services/fuel/types";
 import type { RouteData } from "@/services/maps/types";
 import type { TripInput } from "@/services/trip/types";
 import type { WeatherIntelligence } from "@/services/weather/types";
+import { ui } from "@/components/ui/theme";
 import { EnvironmentalSummary } from "./EnvironmentalSummary";
 import { RiskPanel } from "./RiskPanel";
 import { SevereAlerts } from "./SevereAlerts";
@@ -95,11 +96,8 @@ export function EnvironmentalDashboard({
 
   if (loading) {
     return (
-      <section
-        data-testid="environmental-dashboard"
-        className="rounded-2xl border-2 border-zinc-300 bg-white p-6"
-      >
-        <p data-testid="weather-loading" className="text-lg font-semibold text-zinc-800">
+      <section data-testid="environmental-dashboard" className={ui.panelMuted}>
+        <p data-testid="weather-loading" className={`${ui.body} font-semibold text-zinc-300`}>
           Loading weather intelligence…
         </p>
       </section>
@@ -108,11 +106,8 @@ export function EnvironmentalDashboard({
 
   if (error || !weather) {
     return (
-      <section
-        data-testid="environmental-dashboard"
-        className="rounded-2xl border-2 border-red-700 bg-red-50 p-6"
-      >
-        <p data-testid="weather-error" className="text-lg font-semibold text-red-900">
+      <section data-testid="environmental-dashboard" className={ui.errorBox}>
+        <p data-testid="weather-error" className={ui.errorText}>
           {error ?? "Weather data unavailable"}
         </p>
       </section>

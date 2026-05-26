@@ -1,3 +1,4 @@
+import { ui } from "@/components/ui/theme";
 import type { OperationalState } from "@/services/operations/types";
 
 type TripTimelineProps = {
@@ -14,11 +15,8 @@ const typeLabels: Record<string, string> = {
 
 export function TripTimeline({ state }: TripTimelineProps) {
   return (
-    <section
-      data-testid="trip-timeline"
-      className="rounded-2xl border-2 border-zinc-900 bg-white p-6 shadow-sm"
-    >
-      <h3 className="text-2xl font-bold text-zinc-900">Trip Timeline</h3>
+    <section data-testid="trip-timeline" className={ui.panelNested}>
+      <h3 className={ui.h3}>Trip Timeline</h3>
       <ol className="mt-5 flex flex-col gap-3">
         {state.timeline.map((event) => (
           <li
@@ -26,17 +24,17 @@ export function TripTimeline({ state }: TripTimelineProps) {
             data-testid={`timeline-event-${event.id}`}
             className={`rounded-xl border-2 px-4 py-3 ${
               event.completed
-                ? "border-emerald-700 bg-emerald-50"
-                : "border-zinc-300 bg-zinc-50"
+                ? "border-emerald-500/50 bg-emerald-500/10"
+                : "border-white/10 bg-zinc-950/70"
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-lg font-bold text-zinc-900">{event.label}</p>
-              <span className="text-sm font-semibold uppercase text-zinc-600">
-                {typeLabels[event.type]}
-              </span>
+              <p className={`text-lg font-bold ${event.completed ? "text-emerald-200" : "text-white"}`}>
+                {event.label}
+              </p>
+              <span className={ui.statLabel}>{typeLabels[event.type]}</span>
             </div>
-            <p className="text-lg text-zinc-700">
+            <p className={ui.body}>
               Mile {event.mileMarker.toLocaleString()} · {event.timeLabel}
             </p>
           </li>

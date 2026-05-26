@@ -1,3 +1,4 @@
+import { ui } from "@/components/ui/theme";
 import type { TripTrackingState } from "@/services/location/types";
 
 type GPSStatusProps = {
@@ -22,29 +23,24 @@ export function GPSStatus({
   onUseLive,
 }: GPSStatusProps) {
   return (
-    <section
-      data-testid="gps-status"
-      className="rounded-2xl border-2 border-zinc-900 bg-white p-5 shadow-sm"
-    >
+    <section data-testid="gps-status" className={ui.panelNested}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-2xl font-bold text-zinc-900">GPS Status</h3>
-        <span
-          data-testid="gps-health"
-          className="rounded-full border-2 border-zinc-700 bg-zinc-100 px-3 py-1 text-sm font-bold text-zinc-900"
-        >
+        <h3 className={ui.h3}>GPS Status</h3>
+        <span data-testid="gps-health" className={ui.badge}>
           {gpsHealthLabel[tracking.gpsHealth]}
         </span>
       </div>
-      <p className="mt-2 text-lg text-zinc-700">
+      <p className={`mt-2 ${ui.body}`}>
         Permission: <span data-testid="gps-permission">{tracking.permission}</span>
       </p>
       {tracking.permission === "prompt" || tracking.permission === "unknown" ? (
-        <p className="mt-2 text-lg text-zinc-600">
-          Tap <strong>Enable GPS</strong> — Safari will ask to allow location for this site.
+        <p className={`mt-2 ${ui.bodyMuted}`}>
+          Tap <strong className="text-white">Enable GPS</strong> — Safari will ask to allow
+          location for this site.
         </p>
       ) : null}
       {tracking.error ? (
-        <p data-testid="gps-error" className="mt-2 text-lg font-semibold text-red-700">
+        <p data-testid="gps-error" className={`mt-2 ${ui.errorText}`}>
           {tracking.error}
         </p>
       ) : null}
@@ -53,7 +49,7 @@ export function GPSStatus({
           data-testid="gps-enable-btn"
           type="button"
           onClick={onEnableGps}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-lg font-semibold text-white"
+          className={ui.btnPrimary}
         >
           Enable GPS
         </button>
@@ -61,7 +57,7 @@ export function GPSStatus({
           data-testid="gps-live-mode-btn"
           type="button"
           onClick={onUseLive}
-          className="rounded-lg border-2 border-zinc-900 px-4 py-2 text-lg font-semibold text-zinc-900"
+          className={ui.btnSecondary}
         >
           Live Mode
         </button>
@@ -69,7 +65,7 @@ export function GPSStatus({
           data-testid="gps-manual-mode-btn"
           type="button"
           onClick={onUseManual}
-          className="rounded-lg border-2 border-zinc-900 px-4 py-2 text-lg font-semibold text-zinc-900"
+          className={ui.btnSecondary}
         >
           Manual Fallback
         </button>

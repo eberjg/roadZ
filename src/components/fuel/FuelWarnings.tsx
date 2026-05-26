@@ -5,9 +5,9 @@ type FuelWarningsProps = {
 };
 
 const severityStyles: Record<string, string> = {
-  info: "border-zinc-400 bg-zinc-50 text-zinc-800",
-  warning: "border-amber-600 bg-amber-50 text-amber-950",
-  critical: "border-red-700 bg-red-50 text-red-950",
+  info: "border-zinc-500/40 bg-zinc-800/80 text-zinc-200",
+  warning: "border-amber-500/50 bg-amber-500/10 text-amber-200",
+  critical: "border-red-500/50 bg-red-500/10 text-red-300",
 };
 
 export function FuelWarnings({ intelligence }: FuelWarningsProps) {

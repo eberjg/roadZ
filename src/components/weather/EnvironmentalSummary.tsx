@@ -1,3 +1,4 @@
+import { ui, cn } from "@/components/ui/theme";
 import type { WeatherIntelligence } from "@/services/weather/types";
 import { statusStyles } from "@/components/operations/statusStyles";
 
@@ -15,16 +16,18 @@ export function EnvironmentalSummary({ intelligence }: EnvironmentalSummaryProps
   return (
     <section
       data-testid="environmental-summary"
-      className={`rounded-2xl border-2 bg-white p-6 shadow-sm ${styles.border}`}
+      className={cn(ui.panel, styles.border)}
     >
-      <h2 className="text-2xl font-bold text-zinc-900">Environmental Awareness</h2>
-      <p className="mt-3 text-xl text-zinc-800">
-        {intelligence.current.icon} {intelligence.current.summary} · {intelligence.current.temperatureF}°F
+      <h2 className={ui.h2}>Environmental Awareness</h2>
+      <p className={`mt-3 text-xl text-zinc-200`}>
+        {intelligence.current.icon} {intelligence.current.summary} ·{" "}
+        {intelligence.current.temperatureF}°F
       </p>
-      <p className="mt-2 text-lg text-zinc-700">
-        {zonesAhead} weather zones ahead · {severeCount} severe alert{severeCount === 1 ? "" : "s"}
+      <p className={`mt-2 ${ui.body}`}>
+        {zonesAhead} weather zones ahead · {severeCount} severe alert
+        {severeCount === 1 ? "" : "s"}
       </p>
-      <p data-testid="environmental-risk-score" className="mt-4 text-3xl font-bold text-zinc-900">
+      <p data-testid="environmental-risk-score" className={`mt-4 ${ui.valueXl}`}>
         Route risk: {intelligence.risk.score}/100
       </p>
     </section>

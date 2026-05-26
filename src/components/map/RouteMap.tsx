@@ -142,12 +142,12 @@ export function RouteMap({ route }: RouteMapProps) {
   return (
     <section
       data-testid="route-map"
-      className="overflow-hidden rounded-2xl border-2 border-zinc-900 bg-white shadow-sm"
+      className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-xl shadow-black/50"
     >
       <div className="h-56 w-full sm:h-72">
         {hasMapboxToken ? <MapboxMap route={route} /> : <SvgFallbackMap route={route} />}
       </div>
-      <div className="flex justify-between px-4 py-3 text-sm font-semibold text-zinc-700">
+      <div className="flex justify-between px-4 py-3 text-sm font-semibold text-zinc-400">
         <span data-testid="route-map-start">Start</span>
         <span data-testid="route-map-end">Destination</span>
       </div>
