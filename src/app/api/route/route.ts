@@ -1,8 +1,10 @@
 import { getRoute, RouteServiceError } from "@/services/maps/routeService";
 import type { RouteRequest } from "@/services/maps/types";
+import { logRuntimeDiagnostics } from "@/services/vehicle/envDiagnostics";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  logRuntimeDiagnostics("api/route");
   let body: RouteRequest;
 
   try {

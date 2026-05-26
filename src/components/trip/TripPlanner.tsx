@@ -7,8 +7,9 @@ import { LoadingState } from "@/components/map/LoadingState";
 import { ui } from "@/components/ui/theme";
 import { requestLocationAccess, supportsGeolocation } from "@/services/location/gpsClient";
 import { setStoredPermissionState } from "@/services/preferences/appStorage";
-import { estimateFuelFromVehicle } from "@/services/fuel/vehicleEstimate";
-import { getVehicleProfile } from "@/services/preferences/vehicleProfileStorage";
+import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
+import { getVehicleProfile } from "@/services/vehicle/vehicleStorage";
+import { MPGEstimateCard } from "@/components/vehicle/MPGEstimateCard";
 import { extractUsZip } from "@/services/maps/placeResolver";
 import { calculateTrip } from "@/services/trip/calculateTrip";
 import { readMapHandoffFromSearch } from "@/services/trip/mapDeepLink";
@@ -16,7 +17,6 @@ import type { RouteData } from "@/services/maps/types";
 import type { TripInput, TripResult } from "@/services/trip/types";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { TripResults } from "./TripResults";
-import { VehicleProfilePanel } from "./VehicleProfilePanel";
 
 type TripPlannerProps = {
   initialTrip?: TripInput | null;
@@ -57,10 +57,10 @@ function initialFuelValues(initialTrip?: TripInput | null) {
       gas: String(initialTrip.gasPrice),
     };
   }
-  const estimate = estimateFuelFromVehicle(getVehicleProfile());
+  const estimate = estimateVehicle(getVehicleProfile());
   return {
-    mpg: String(estimate.estimatedMpg),
-    gas: String(estimate.suggestedGasPrice),
+    mpg: String(estimate.highwayMpg),
+    gas: String(estimate.suggestedGasPrice || 3.85),
   };
 }
 
@@ -251,12 +251,7 @@ export function TripPlanner({
           onValueChange={setDestinationPlace}
         />
 
-        <VehicleProfilePanel
-          mpgValue={vehicleMpg}
-          gasPriceValue={gasPrice}
-          onMpgChange={setVehicleMpg}
-          onGasPriceChange={setGasPrice}
-        />
+        <MPGEstimateCard estimate={estimateVehicle(getVehicleProfile())} />
 
         <label className="block">
           <span className={ui.label}>Vehicle MPG</span>

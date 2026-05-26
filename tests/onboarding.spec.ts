@@ -46,6 +46,12 @@ async function mockGeolocationGranted(page: import("@playwright/test").Page) {
   });
 }
 
+async function completeVehicleWizard(page: import("@playwright/test").Page) {
+  await expect(page.getByTestId("vehicle-profile-wizard")).toBeVisible();
+  await page.getByTestId("wizard-vehicle-next").click();
+  await page.getByTestId("wizard-vehicle-save").click();
+}
+
 async function mockGeolocationDenied(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
     const geolocationMock: Geolocation = {
@@ -96,6 +102,7 @@ test.describe("First-launch onboarding", () => {
     await page.getByTestId("onboarding-enable-gps").click();
     await expect(page.getByTestId("onboarding-permission-success")).toBeVisible();
     await page.getByTestId("onboarding-enter-dashboard").click();
+    await completeVehicleWizard(page);
     await expect(page.getByTestId("app-dashboard")).toBeVisible();
     await expect(page.getByTestId("dashboard-title")).toHaveText("roadZ");
   });
@@ -108,6 +115,7 @@ test.describe("First-launch onboarding", () => {
     await page.getByTestId("onboarding-enable-gps").click();
     await expect(page.getByTestId("onboarding-permission-denied")).toBeVisible();
     await page.getByTestId("onboarding-continue-manual").click();
+    await completeVehicleWizard(page);
     await expect(page.getByTestId("dashboard-title")).toBeVisible();
   });
 

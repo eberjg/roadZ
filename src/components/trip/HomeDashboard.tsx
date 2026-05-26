@@ -16,6 +16,8 @@ import { RouteMap } from "@/components/map/RouteMap";
 import { RouteSummary } from "@/components/map/RouteSummary";
 import { DriverCopilotBanner } from "@/components/trip/DriverCopilotBanner";
 import { TripPlanner } from "@/components/trip/TripPlanner";
+import { VehicleProfileWizard } from "@/components/vehicle/VehicleProfileWizard";
+import { VehicleSummary } from "@/components/vehicle/VehicleSummary";
 import {
   defaultDashboardPreferences,
   getDashboardPreferences,
@@ -64,6 +66,7 @@ export function HomeDashboard() {
   );
   const [sessionCleared, setSessionCleared] = useState(false);
   const [plannerExpanded, setPlannerExpanded] = useState(false);
+  const [showVehicleWizard, setShowVehicleWizard] = useState(false);
 
   const restoredTrip = useMemo(
     () => (savedSession ? sessionToTripState(savedSession) : null),
@@ -202,6 +205,10 @@ export function HomeDashboard() {
     [showLiveData],
   );
 
+  if (showVehicleWizard) {
+    return <VehicleProfileWizard onComplete={() => setShowVehicleWizard(false)} />;
+  }
+
   return (
     <div className={ui.page}>
       <main className={`${ui.main} ${motion.pageEnter}`}>
@@ -220,6 +227,17 @@ export function HomeDashboard() {
           tripRestored={tripRestored}
           onStartNewTrip={handleNewTrip}
         />
+
+        {trip ? (
+          <p
+            data-testid="active-trip-banner"
+            className={`rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 ${ui.body}`}
+          >
+            Active trip in progress — roadZ is tracking your route, fuel, and progress.
+          </p>
+        ) : null}
+
+        <VehicleSummary onEdit={() => setShowVehicleWizard(true)} />
 
         <Suspense
           fallback={

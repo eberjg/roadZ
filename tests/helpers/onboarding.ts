@@ -1,18 +1,28 @@
 import type { Page } from "@playwright/test";
 
+const VEHICLE_PROFILE_JSON = JSON.stringify({
+  make: "Toyota",
+  model: "Camry",
+  year: 2018,
+  fuelType: "gas",
+  profileComplete: true,
+});
+
 /** Mark onboarding done so regression specs land on the dashboard. */
 export async function primeOnboardingComplete(page: Page) {
-  await page.addInitScript(() => {
+  await page.addInitScript((vehicleJson) => {
     window.localStorage.setItem("rc_onboarding_complete", "true");
-  });
+    window.localStorage.setItem("rc_vehicle_profile_v2", vehicleJson);
+  }, VEHICLE_PROFILE_JSON);
 }
 
 /** Return visit with GPS already allowed (matches post-onboarding production). */
 export async function primeReturningDriver(page: Page) {
-  await page.addInitScript(() => {
+  await page.addInitScript((vehicleJson) => {
     window.localStorage.setItem("rc_onboarding_complete", "true");
     window.localStorage.setItem("rc_permission_state", "granted");
-  });
+    window.localStorage.setItem("rc_vehicle_profile_v2", vehicleJson);
+  }, VEHICLE_PROFILE_JSON);
 }
 
 /** First-visit onboarding tests — clear persisted app state. */
@@ -23,6 +33,7 @@ export async function resetOnboardingState(page: Page) {
     window.localStorage.removeItem("rc_dashboard_preferences");
     window.localStorage.removeItem("rc_active_trip_session");
     window.localStorage.removeItem("rc_vehicle_profile");
+    window.localStorage.removeItem("rc_vehicle_profile_v2");
   });
 }
 

@@ -1,7 +1,7 @@
 import type { GPSPermissionState } from "@/services/location/types";
 
 import { clearTripSession } from "./tripSessionStorage";
-import { clearVehicleProfile } from "./vehicleProfileStorage";
+import { clearVehicleProfile } from "@/services/vehicle/vehicleStorage";
 
 const KEYS = {
   onboardingComplete: "rc_onboarding_complete",
