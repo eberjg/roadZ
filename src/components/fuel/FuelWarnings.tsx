@@ -1,3 +1,5 @@
+import { animations } from "@/components/ui/animations";
+import { semantic } from "@/components/ui/colors";
 import type { FuelIntelligence } from "@/services/fuel/types";
 
 type FuelWarningsProps = {
@@ -5,9 +7,9 @@ type FuelWarningsProps = {
 };
 
 const severityStyles: Record<string, string> = {
-  info: "border-zinc-500/40 bg-zinc-800/80 text-zinc-200",
-  warning: "border-amber-500/50 bg-amber-500/10 text-amber-200",
-  critical: "border-red-500/50 bg-red-500/10 text-red-300",
+  info: `${semantic.info.border} ${semantic.info.bg} ${semantic.info.text}`,
+  warning: `${semantic.caution.border} ${semantic.caution.bg} ${semantic.caution.text} ${animations.pulseAlert}`,
+  critical: `${semantic.critical.border} ${semantic.critical.bg} ${semantic.critical.text} ${animations.pulseAlert}`,
 };
 
 export function FuelWarnings({ intelligence }: FuelWarningsProps) {

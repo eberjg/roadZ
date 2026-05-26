@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { primeOnboardingComplete } from "./helpers/onboarding";
 
 async function calculateSampleTrip(page: import("@playwright/test").Page) {
   await page.getByTestId("input-start-zip").fill("33301");
@@ -9,6 +10,10 @@ async function calculateSampleTrip(page: import("@playwright/test").Page) {
 }
 
 test.describe("Route map and live routing", () => {
+  test.beforeEach(async ({ page }) => {
+    await primeOnboardingComplete(page);
+  });
+
   test("calculates route with distance and ETA visible", async ({ page }) => {
     await page.goto("/");
     await calculateSampleTrip(page);

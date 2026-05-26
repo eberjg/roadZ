@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { primeOnboardingComplete } from "./helpers/onboarding";
 
 test.describe("Trip calculator", () => {
+  test.beforeEach(async ({ page }) => {
+    await primeOnboardingComplete(page);
+  });
   test("calculates trip from ZIPs, MPG, and gas price", async ({ page }) => {
     await page.goto("/");
 

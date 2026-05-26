@@ -7,6 +7,7 @@ import {
   startLocationWatch,
   supportsGeolocation,
 } from "@/services/location/gpsClient";
+import { getStoredPermissionState } from "@/services/preferences/appStorage";
 import {
   applyLocationUpdate,
   applyPermissionState,
@@ -34,14 +35,19 @@ export function LiveTripTracker({
 
   useEffect(() => {
     async function setup() {
+      const stored = getStoredPermissionState();
+      if (stored === "granted") {
+        setTracking((previous) => applyPermissionState(previous, "granted"));
+        return;
+      }
+      if (stored === "denied") {
+        setTracking((previous) => applyPermissionState(previous, "denied"));
+        return;
+      }
       const permission = await getPermissionState();
       setTracking((previous) => applyPermissionState(previous, permission));
     }
     void setup();
-
-    return () => {
-      return;
-    };
   }, []);
 
   useEffect(() => {

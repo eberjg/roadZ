@@ -1,17 +1,24 @@
-/** Shared dark UI tokens — mobile-first, high contrast for in-car use. */
+import { semantic } from "./colors";
+import { glass } from "./glass";
+import { gradients } from "./gradients";
+
+/** Shared dark UI tokens — mobile-first, premium glass system. */
 export const ui = {
-  page: "min-h-full bg-gradient-to-b from-zinc-950 via-slate-950 to-black text-zinc-100",
-  main: "mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-8 pb-24",
+  page: `${gradients.page} text-zinc-100`,
+  main: "mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-8 pb-28",
+  immersiveMain: "mx-auto flex w-full max-w-xl flex-1 flex-col gap-6",
+
   title: "text-4xl font-bold tracking-tight text-white",
   subtitle: "mt-2 text-lg text-zinc-400",
+  eyebrow: "text-sm font-semibold uppercase tracking-[0.2em] text-sky-400/90",
 
-  panel:
-    "rounded-2xl border border-white/10 bg-zinc-900/90 p-6 shadow-xl shadow-black/50 backdrop-blur-sm",
-  panelNested:
-    "rounded-2xl border border-white/10 bg-zinc-800/70 p-5 shadow-lg shadow-black/40",
-  panelInset: "rounded-xl border border-white/10 bg-zinc-950/70 p-4",
-  panelMuted:
-    "rounded-2xl border border-dashed border-white/15 bg-zinc-900/50 p-6 text-zinc-400",
+  panel: glass.panel,
+  panelNested: glass.panelNested,
+  panelInset: glass.panelInset,
+  panelMuted: glass.panelMuted,
+  glassShell: glass.shell,
+  glassSheen: glass.shellGlow,
+  chip: glass.chip,
 
   h2: "text-2xl font-bold tracking-tight text-white",
   h3: "text-2xl font-bold text-white",
@@ -25,33 +32,36 @@ export const ui = {
   valueHero: "text-4xl font-bold text-white",
   valueMega: "text-5xl font-bold text-white",
 
-  statBox: "rounded-xl border border-white/10 bg-zinc-950/80 p-4",
   statLabel: "text-xs font-semibold uppercase tracking-wider text-zinc-500",
-  chip: "rounded-lg border border-white/5 bg-zinc-800/90 p-3",
 
   input:
-    "mt-2 w-full rounded-xl border border-white/15 bg-zinc-950 px-4 py-4 text-xl text-white placeholder:text-zinc-500 focus:border-sky-400/60 focus:outline-none focus:ring-4 focus:ring-sky-500/25",
+    "mt-2 w-full rounded-xl border border-white/15 bg-zinc-950/80 px-4 py-4 text-xl text-white placeholder:text-zinc-500 backdrop-blur-sm focus:border-sky-400/60 focus:outline-none focus:ring-4 focus:ring-sky-500/25",
   label: "text-lg font-semibold text-zinc-200",
 
-  btnPrimary:
-    "rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 px-5 py-3 text-lg font-bold text-zinc-950 shadow-lg shadow-sky-500/30 transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45",
-  btnPrimaryBlock:
-    "w-full rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 px-6 py-5 text-xl font-bold text-zinc-950 shadow-lg shadow-sky-500/30 transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45",
+  btnPrimary: `rounded-xl ${gradients.cta} px-5 py-3.5 text-lg font-bold text-zinc-950 shadow-lg shadow-sky-500/30 transition ${gradients.ctaHover} active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45`,
+  btnPrimaryBlock: `w-full rounded-2xl ${gradients.cta} px-6 py-5 text-xl font-bold text-zinc-950 shadow-lg shadow-sky-500/35 transition ${gradients.ctaHover} active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45`,
   btnSecondary:
-    "rounded-xl border border-white/20 bg-zinc-800 px-4 py-2.5 text-lg font-semibold text-white transition hover:bg-zinc-700 active:scale-[0.99]",
-  badge:
-    "rounded-full border border-white/15 bg-zinc-800 px-3 py-1 text-sm font-bold text-zinc-100",
+    "rounded-2xl border border-white/20 bg-zinc-900/60 px-4 py-3.5 text-lg font-semibold text-white backdrop-blur-md transition hover:bg-zinc-800/80 active:scale-[0.98]",
+  btnGhost:
+    "rounded-2xl px-4 py-3 text-lg font-semibold text-zinc-400 transition hover:text-white",
 
-  errorBox: "rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4",
-  errorText: "text-lg font-semibold text-red-300",
-  successBox: "rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5",
-  successText: "text-lg font-semibold text-emerald-300",
+  badge:
+    "rounded-full border border-white/15 bg-zinc-900/70 px-3 py-1 text-sm font-bold text-zinc-100 backdrop-blur-sm",
+
+  errorBox: `${semantic.critical.border} ${semantic.critical.bg} rounded-2xl border px-5 py-4`,
+  errorText: `${semantic.critical.text} text-lg font-semibold`,
+  successBox: `${semantic.success.border} ${semantic.success.bg} rounded-2xl border p-5`,
+  successText: `${semantic.success.text} text-lg font-semibold`,
 
   mapFrame:
-    "overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-xl shadow-black/50",
+    "overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60 shadow-xl shadow-black/50 backdrop-blur-sm",
   mapCaption: "text-sm font-semibold text-zinc-400",
+
+  semantic,
 } as const;
 
 export function cn(...parts: (string | false | undefined | null)[]): string {
   return parts.filter(Boolean).join(" ");
 }
+
+export { glass, gradients, semantic };

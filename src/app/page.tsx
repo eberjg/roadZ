@@ -1,5 +1,5 @@
-import { HomeDashboard } from "@/components/trip/HomeDashboard";
+import { AppExperience } from "@/components/AppExperience";
 
 export default function Home() {
-  return <HomeDashboard />;
+  return <AppExperience />;
 }

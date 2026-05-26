@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { primeOnboardingComplete } from "./helpers/onboarding";
 
 async function startTrip(page: import("@playwright/test").Page) {
   await page.goto("/");
@@ -11,6 +12,10 @@ async function startTrip(page: import("@playwright/test").Page) {
 }
 
 test.describe("Operational dashboard", () => {
+  test.beforeEach(async ({ page }) => {
+    await primeOnboardingComplete(page);
+  });
+
   test("renders operational dashboard with progress", async ({ page }) => {
     await startTrip(page);
 

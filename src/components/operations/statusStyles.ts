@@ -1,3 +1,4 @@
+import { semantic } from "@/components/ui/colors";
 import type { OperationalStatus } from "@/services/operations/types";
 
 export const statusStyles: Record<
@@ -5,23 +6,23 @@ export const statusStyles: Record<
   { badge: string; border: string; text: string }
 > = {
   NORMAL: {
-    badge: "border-emerald-500/50 bg-emerald-500/15 text-emerald-300",
-    border: "border-emerald-500/50",
-    text: "text-emerald-300",
+    badge: semantic.success.badge,
+    border: semantic.success.border,
+    text: semantic.success.text,
   },
   CAUTION: {
-    badge: "border-amber-500/50 bg-amber-500/15 text-amber-200",
-    border: "border-amber-500/50",
-    text: "text-amber-200",
+    badge: semantic.caution.badge,
+    border: semantic.caution.border,
+    text: semantic.caution.text,
   },
   HIGH_RISK: {
-    badge: "border-orange-500/50 bg-orange-500/15 text-orange-200",
-    border: "border-orange-500/50",
-    text: "text-orange-200",
+    badge: semantic.high_risk.badge,
+    border: semantic.high_risk.border,
+    text: semantic.high_risk.text,
   },
   CRITICAL: {
-    badge: "border-red-500/50 bg-red-500/15 text-red-300",
-    border: "border-red-500/50",
-    text: "text-red-300",
+    badge: semantic.critical.badge,
+    border: semantic.critical.border,
+    text: semantic.critical.text,
   },
 };

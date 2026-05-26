@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { primeOnboardingComplete } from "./helpers/onboarding";
 
 async function mockGeolocation(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
@@ -94,6 +95,10 @@ async function emitPosition(
 }
 
 test.describe("Live GPS tracker", () => {
+  test.beforeEach(async ({ page }) => {
+    await primeOnboardingComplete(page);
+  });
+
   test("requests GPS on Enable even when Permissions API says denied", async ({ page }) => {
     await mockGeolocation(page);
     await page.addInitScript(() => {

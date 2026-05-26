@@ -33,3 +33,106 @@ select,
 textarea {
   font: inherit;
 }
+
+@keyframes rc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rc-fade-in-slow {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rc-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rc-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes rc-pulse-alert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.2);
+  }
+}
+
+@keyframes rc-permission-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.rc-animate-fade-in {
+  animation: rc-fade-in 0.35s ease-out both;
+}
+
+.rc-animate-fade-in-slow {
+  animation: rc-fade-in-slow 0.5s ease-out both;
+}
+
+.rc-animate-slide-up {
+  animation: rc-slide-up 0.45s ease-out both;
+}
+
+.rc-animate-permission-enter {
+  animation: rc-permission-enter 0.4s ease-out both;
+}
+
+.rc-animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: rc-shimmer 1.4s ease-in-out infinite;
+}
+
+.rc-animate-pulse-alert {
+  animation: rc-pulse-alert 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-animate-fade-in,
+  .rc-animate-fade-in-slow,
+  .rc-animate-slide-up,
+  .rc-animate-permission-enter,
+  .rc-animate-shimmer,
+  .rc-animate-pulse-alert {
+    animation: none;
+  }
+}

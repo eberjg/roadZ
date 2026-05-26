@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { primeOnboardingComplete } from "./helpers/onboarding";
 
 async function calculateTrip(
   page: import("@playwright/test").Page,
@@ -13,6 +14,10 @@ async function calculateTrip(
 }
 
 test.describe("Fuel intelligence and stop planner", () => {
+  test.beforeEach(async ({ page }) => {
+    await primeOnboardingComplete(page);
+  });
+
   test("shows fuel calculations and stop recommendation", async ({ page }) => {
     await page.goto("/");
     await calculateTrip(page);

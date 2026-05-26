@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DashboardCard } from "@/components/DashboardCard";
+import { motion } from "@/components/ui/motion";
 import { ui } from "@/components/ui/theme";
 import { FuelPanel } from "@/components/fuel/FuelPanel";
 import { FuelWarnings } from "@/components/fuel/FuelWarnings";
@@ -44,8 +45,8 @@ export function HomeDashboard() {
 
   return (
     <div className={ui.page}>
-      <main className={ui.main}>
-        <header>
+      <main className={`${ui.main} ${motion.pageEnter}`}>
+        <header className={motion.cardEnter}>
           <p className="text-sm font-semibold uppercase tracking-widest text-sky-400/90">
             Road Companion Pilot
           </p>
