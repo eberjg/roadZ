@@ -14,12 +14,14 @@ type DashboardSettingsProps = {
   hasActiveTrip: boolean;
   tripRestored: boolean;
   onStartNewTrip: () => void;
+  compact?: boolean;
 };
 
 export function DashboardSettings({
   hasActiveTrip,
   tripRestored,
   onStartNewTrip,
+  compact = false,
 }: DashboardSettingsProps) {
   const showRestoredBanner = tripRestored && hasActiveTrip;
   const preferences = useSyncExternalStore(
@@ -29,11 +31,16 @@ export function DashboardSettings({
   );
 
   return (
-    <section data-testid="dashboard-settings" className={ui.panel}>
-      <h2 className={ui.h2}>Display</h2>
-      <p className={`mt-2 ${ui.body}`}>
-        Choose how much updates while you drive. Your trip is always saved when you close the app.
-      </p>
+    <section
+      data-testid="dashboard-settings"
+      className={compact ? `${ui.panelNested} p-3 text-sm` : ui.panel}
+    >
+      {!compact ? <h2 className={ui.h2}>Display</h2> : null}
+      {!compact ? (
+        <p className={`mt-2 ${ui.body}`}>
+          Choose how much updates while you drive. Your trip is always saved when you close the app.
+        </p>
+      ) : null}
 
       {showRestoredBanner ? (
         <p

@@ -7,7 +7,10 @@ import {
   startLocationWatch,
   supportsGeolocation,
 } from "@/services/location/gpsClient";
-import { getStoredPermissionState } from "@/services/preferences/appStorage";
+import {
+  getStoredPermissionState,
+  setStoredPermissionState,
+} from "@/services/preferences/appStorage";
 import {
   applyLocationUpdate,
   applyPermissionState,
@@ -68,7 +71,13 @@ export function LiveTripTracker({
         return;
       }
       if (stored === "denied") {
-        setTracking((previous) => applyPermissionState(previous, "denied"));
+        // Stale "denied" is common on iOS after user sets Safari Location → Allow.
+        // Never block the UI as hard-denied without a fresh read on user tap.
+        setTracking((previous) => ({
+          ...applyPermissionState(previous, "prompt"),
+          error:
+            "Location was blocked earlier. If Safari already shows Allow, reload this page, then tap Enable GPS.",
+        }));
         return;
       }
       const permission = await getPermissionState();
@@ -139,24 +148,27 @@ export function LiveTripTracker({
       return;
     }
 
+    const hadStaleDenial = getStoredPermissionState() === "denied";
+    setStoredPermissionState("prompt");
+
     setTracking((previous) => ({
       ...previous,
       error: null,
       permission: "prompt",
     }));
 
-    const access = await requestLocationAccess();
+    const access = await requestLocationAccess({
+      recovery: hadStaleDenial,
+    });
     if (!access.ok) {
       setTracking((previous) => {
-        const next =
-          access.code === "denied"
-            ? applyPermissionState(previous, "denied")
-            : applyPermissionState(previous, "prompt");
+        const next = applyPermissionState(previous, "prompt");
         return applyTrackingError(next, access.message);
       });
       return;
     }
 
+    setStoredPermissionState("granted");
     onLocationSample?.(access.sample);
     setTracking((previous) => {
       const granted = applyPermissionState(previous, "granted");

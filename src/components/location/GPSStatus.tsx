@@ -98,7 +98,7 @@ export function GPSStatus({
             data-testid="gps-enable-btn"
             type="button"
             onClick={onEnableGps}
-            className={ui.btnSecondary}
+            className={ui.btnPrimary}
           >
             Retry GPS
           </button>

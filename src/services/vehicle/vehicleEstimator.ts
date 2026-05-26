@@ -17,6 +17,7 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
 
   const isElectric = profile.fuelType === "electric" || entry.fuelType === "electric";
   const highwayMpg = entry.highwayMpg;
+  const cityMpg = entry.cityMpg;
   const tankGallons = entry.tankGallons;
   const rangeMiles = isElectric
     ? (entry.electricRangeMiles ?? 280)
@@ -28,6 +29,7 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
 
   return {
     highwayMpg,
+    cityMpg,
     tankGallons,
     rangeMiles,
     suggestedGasPrice: isElectric ? 0 : DEFAULT_GAS_PRICE,

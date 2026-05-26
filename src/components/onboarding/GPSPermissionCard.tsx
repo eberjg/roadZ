@@ -67,7 +67,9 @@ export function GPSPermissionCard({
           </p>
           <ul className={`mt-4 list-disc space-y-2 pl-5 ${ui.bodyMuted}`}>
             <li>Safari → address bar → aA → Website Settings → Location → Allow</li>
-            <li>Or iPhone Settings → Privacy → Location Services → Safari</li>
+            <li>Reload this page after changing that setting (pull to refresh or close the tab)</li>
+            <li>Then tap Try again below</li>
+            <li>iPhone Settings → Privacy → Location Services → on</li>
           </ul>
         </div>
       ) : null}

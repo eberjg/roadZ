@@ -13,6 +13,8 @@ type RouteMapProps = {
   completedDistanceMiles?: number;
   youPosition?: LngLat | null;
   followTrip?: boolean;
+  /** Immersive fills parent — used in cockpit map stage */
+  variant?: "default" | "immersive";
 };
 
 function lineFeature(coordinates: [number, number][]) {
@@ -26,12 +28,13 @@ function lineFeature(coordinates: [number, number][]) {
   };
 }
 
-function SvgFallbackMap({
-  route,
-  completedDistanceMiles = 0,
-  youPosition = null,
-  followTrip = true,
-}: RouteMapProps) {
+function SvgFallbackMap(routeMap: RouteMapProps) {
+  const {
+    route,
+    completedDistanceMiles = 0,
+    youPosition = null,
+    followTrip = true,
+  } = routeMap;
   const { traveled, remaining } = useMemo(
     () => splitRoutePolyline(route.polyline, completedDistanceMiles),
     [route.polyline, completedDistanceMiles],
@@ -67,7 +70,7 @@ function SvgFallbackMap({
   const maxLat = Math.max(...lats);
 
   const width = 360;
-  const height = 220;
+  const height = routeMap.variant === "immersive" ? 400 : 220;
   const padding = 16;
 
   const project = ([lng, lat]: [number, number]) => {
@@ -317,12 +320,39 @@ function applyMapView(input: {
 
 export function RouteMap(props: RouteMapProps) {
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim());
+  const immersive = props.variant === "immersive";
   const you =
     props.youPosition ??
     resolveYouAreHere({
       polyline: props.route.polyline,
       completedDistanceMiles: props.completedDistanceMiles ?? 0,
     });
+
+  if (immersive) {
+    return (
+      <section
+        data-testid="route-map"
+        data-variant="immersive"
+        className="h-full w-full overflow-hidden bg-zinc-950"
+      >
+        <p className="sr-only" data-testid="route-map-position-label">
+          You at {you.lat.toFixed(2)}, {you.lng.toFixed(2)}
+          {(props.completedDistanceMiles ?? 0) > 0
+            ? ` · ${Math.round(props.completedDistanceMiles ?? 0)} mi along route`
+            : " · at start"}
+        </p>
+        <span className="sr-only" data-testid="route-map-start">
+          Start
+        </span>
+        <span className="sr-only" data-testid="route-map-end">
+          Destination
+        </span>
+        <div className="h-full w-full">
+          {hasMapboxToken ? <MapboxMap {...props} /> : <SvgFallbackMap {...props} />}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

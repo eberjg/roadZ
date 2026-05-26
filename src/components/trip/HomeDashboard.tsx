@@ -5,16 +5,7 @@ import { DashboardCard } from "@/components/DashboardCard";
 import { DashboardSettings } from "@/components/settings/DashboardSettings";
 import { motion } from "@/components/ui/motion";
 import { ui } from "@/components/ui/theme";
-import { FuelPanel } from "@/components/fuel/FuelPanel";
-import { FuelWarnings } from "@/components/fuel/FuelWarnings";
-import { StopRecommendation } from "@/components/fuel/StopRecommendation";
-import { TripSegments } from "@/components/fuel/TripSegments";
-import { LiveTripTracker } from "@/components/location/LiveTripTracker";
-import { OperationalDashboard } from "@/components/operations/OperationalDashboard";
-import { EnvironmentalDashboard } from "@/components/weather/EnvironmentalDashboard";
-import { RouteMap } from "@/components/map/RouteMap";
-import { RouteSummary } from "@/components/map/RouteSummary";
-import { DriverCopilotBanner } from "@/components/trip/DriverCopilotBanner";
+import { OperationalCockpit } from "@/components/cockpit/OperationalCockpit";
 import { TripPlanner } from "@/components/trip/TripPlanner";
 import { VehicleProfileWizard } from "@/components/vehicle/VehicleProfileWizard";
 import { VehicleSummary } from "@/components/vehicle/VehicleSummary";
@@ -30,8 +21,6 @@ import {
   saveTripSession,
   subscribeTripSession,
 } from "@/services/preferences/tripSessionStorage";
-import { buildFuelIntelligence } from "@/services/fuel/fuelService";
-import type { FuelIntelligence } from "@/services/fuel/types";
 import type { LocationSample } from "@/services/location/types";
 import { resolveYouAreHere } from "@/services/maps/routeProgress";
 import type { LngLat, RouteData } from "@/services/maps/types";
@@ -141,19 +130,6 @@ export function HomeDashboard() {
     });
   }, [trip, completedDistanceMiles, trackerMode, mapYouPosition]);
 
-  const fuelIntelligence: FuelIntelligence | null = useMemo(() => {
-    if (!trip) {
-      return null;
-    }
-    return buildFuelIntelligence({
-      totalDistanceMiles: trip.route.distanceMiles,
-      vehicleMpg: trip.input.vehicleMpg,
-      userGasPrice: trip.input.gasPrice,
-      totalFuelCost: trip.result.fuelCost,
-      totalGallonsRequired: trip.result.gallonsNeeded,
-    });
-  }, [trip]);
-
   const handleNewTrip = useCallback(() => {
     clearTripSession();
     setSessionCleared(true);
@@ -209,6 +185,72 @@ export function HomeDashboard() {
     return <VehicleProfileWizard onComplete={() => setShowVehicleWizard(false)} />;
   }
 
+  const tripPlanner = (
+    <Suspense
+      fallback={
+        <section className={ui.panelMuted}>
+          <p className={ui.body}>Loading trip planner…</p>
+        </section>
+      }
+    >
+      <TripPlanner
+        key={trip ? "active" : "empty"}
+        initialTrip={trip?.input ?? null}
+        initialResult={trip?.result ?? null}
+        isCollapsed={Boolean(trip) && !plannerExpanded}
+        activeTripSummary={
+          trip
+            ? {
+                startPlace: trip.input.startPlace,
+                destinationPlace: trip.input.destinationPlace,
+                distanceMiles: trip.route.distanceMiles,
+              }
+            : null
+        }
+        onRequestExpand={() => setPlannerExpanded(true)}
+        onRequestCollapse={() => setPlannerExpanded(false)}
+        onCalculated={(input, result, route) => {
+          const nextTrip = { input, result, route };
+          const permission = getStoredPermissionState();
+          const startLive = showLiveData && permission === "granted";
+          setSessionCleared(false);
+          setTripOverride(nextTrip);
+          setProgressOverride(0);
+          setModeOverride(startLive ? "live" : "manual");
+          setPlannerExpanded(false);
+          persistTrip(nextTrip, 0, startLive ? "live" : "manual");
+        }}
+      />
+    </Suspense>
+  );
+
+  if (trip && plannerExpanded) {
+    return (
+      <div className={ui.page}>
+        <main className={`${ui.main} ${motion.pageEnter}`}>{tripPlanner}</main>
+      </div>
+    );
+  }
+
+  if (trip) {
+    return (
+      <OperationalCockpit
+        trip={trip}
+        completedDistanceMiles={completedDistanceMiles}
+        trackerMode={trackerMode}
+        showLiveData={showLiveData}
+        tripRestored={tripRestored}
+        mapYouPosition={mapYouPosition}
+        onAutoProgress={handleAutoProgress}
+        onModeChange={setTrackerMode}
+        onLocationSample={handleLocationSample}
+        onProgressChange={setCompletedDistanceMiles}
+        onStartNewTrip={handleNewTrip}
+        onOpenPlanner={() => setPlannerExpanded(true)}
+      />
+    );
+  }
+
   return (
     <div className={ui.page}>
       <main className={`${ui.main} ${motion.pageEnter}`}>
@@ -228,160 +270,40 @@ export function HomeDashboard() {
           onStartNewTrip={handleNewTrip}
         />
 
-        {trip ? (
-          <p
-            data-testid="active-trip-banner"
-            className={`rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 ${ui.body}`}
-          >
-            Active trip in progress — roadZ is tracking your route, fuel, and progress.
-          </p>
-        ) : null}
-
         <VehicleSummary onEdit={() => setShowVehicleWizard(true)} />
 
-        <Suspense
-          fallback={
-            <section className={ui.panelMuted}>
-              <p className={ui.body}>Loading trip planner…</p>
-            </section>
-          }
-        >
-          <TripPlanner
-            key={trip ? "active" : "empty"}
-            initialTrip={trip?.input ?? null}
-            initialResult={trip?.result ?? null}
-            isCollapsed={Boolean(trip) && !plannerExpanded}
-            activeTripSummary={
-              trip
-                ? {
-                    startPlace: trip.input.startPlace,
-                    destinationPlace: trip.input.destinationPlace,
-                    distanceMiles: trip.route.distanceMiles,
-                  }
-                : null
-            }
-            onRequestExpand={() => setPlannerExpanded(true)}
-            onRequestCollapse={() => setPlannerExpanded(false)}
-            onCalculated={(input, result, route) => {
-              const nextTrip = { input, result, route };
-              const permission = getStoredPermissionState();
-              const startLive = showLiveData && permission === "granted";
-              setSessionCleared(false);
-              setTripOverride(nextTrip);
-              setProgressOverride(0);
-              setModeOverride(startLive ? "live" : "manual");
-              setPlannerExpanded(false);
-              persistTrip(nextTrip, 0, startLive ? "live" : "manual");
-            }}
-          />
-        </Suspense>
+        {tripPlanner}
 
-        {trip && !plannerExpanded ? (
-          <DriverCopilotBanner
-            startPlace={trip.input.startPlace}
-            destinationPlace={trip.input.destinationPlace}
-            completedDistanceMiles={completedDistanceMiles}
-            totalDistanceMiles={trip.route.distanceMiles}
-            liveDataEnabled={showLiveData}
-            tripRestored={tripRestored}
-          />
-        ) : null}
-
-        {!showLiveData && trip ? (
-          <p
-            data-testid="static-mode-banner"
-            className={`rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 ${ui.body}`}
-          >
-            Static mode — trip totals stay fixed. Turn on{" "}
-            <strong className="text-white">Live dynamic data</strong> for GPS and weather updates.
+        <section data-testid="live-trip-tracker" className={ui.panelMuted}>
+          <h2 className={ui.h2}>Live Trip Tracker</h2>
+          <p className={`mt-2 ${ui.body}`}>
+            Start a trip to enable GPS tracking and movement detection
           </p>
-        ) : null}
-
-        {trip && fuelIntelligence ? (
-          <>
-            <LiveTripTracker
-              totalDistanceMiles={trip.route.distanceMiles}
-              startPlace={trip.input.startPlace}
-              destinationPlace={trip.input.destinationPlace}
-              liveDataEnabled={showLiveData}
-              initialProgressMiles={completedDistanceMiles}
-              onAutoProgress={handleAutoProgress}
-              onModeChange={setTrackerMode}
-              onLocationSample={handleLocationSample}
-            />
-            <RouteMap
-              route={trip.route}
-              completedDistanceMiles={completedDistanceMiles}
-              youPosition={mapYouPosition}
-              followTrip
-            />
-            <OperationalDashboard
-              route={trip.route}
-              fuelIntelligence={fuelIntelligence}
-              completedDistanceMiles={completedDistanceMiles}
-              onProgressChange={setCompletedDistanceMiles}
-              manualProgressEnabled={trackerMode === "manual" || !showLiveData}
-            />
-            <EnvironmentalDashboard
-              tripInput={trip.input}
-              route={trip.route}
-              fuelIntelligence={fuelIntelligence}
-              completedDistanceMiles={completedDistanceMiles}
-              liveUpdatesEnabled={showLiveData}
-            />
-            <RouteSummary route={trip.route} />
-            <FuelPanel intelligence={fuelIntelligence} />
-            <FuelWarnings intelligence={fuelIntelligence} />
-            <StopRecommendation intelligence={fuelIntelligence} />
-            <TripSegments intelligence={fuelIntelligence} />
-          </>
-        ) : (
-          <>
-            <section data-testid="live-trip-tracker" className={ui.panelMuted}>
-              <h2 className={ui.h2}>Live Trip Tracker</h2>
-              <p className={`mt-2 ${ui.body}`}>
-                Start a trip to enable GPS tracking and movement detection
-              </p>
-            </section>
-            <section data-testid="operational-dashboard" className={ui.panelMuted}>
-              <h2 className={ui.h2}>Operational Co-Pilot</h2>
-              <p className={`mt-2 ${ui.body}`}>
-                Calculate a trip to activate live operational tracking
-              </p>
-            </section>
-            <section data-testid="environmental-dashboard" className={ui.panelMuted}>
-              <h2 className={ui.h2}>Environmental Awareness</h2>
-              <p className={`mt-2 ${ui.body}`}>
-                Calculate a trip for weather and road risk intelligence
-              </p>
-            </section>
-            <DashboardCard title="Fuel Intelligence" testId="fuel-card">
-              <p className={ui.value}>No fuel data yet</p>
-              <p className={`mt-2 ${ui.body}`}>Calculate a trip to see fuel intelligence</p>
-            </DashboardCard>
-            <DashboardCard title="Stop Recommendation" testId="stop-card">
-              <p className={ui.value}>No stop recommendation yet</p>
-              <p className={`mt-2 ${ui.body}`}>Calculate a trip for smart stop planning</p>
-            </DashboardCard>
-          </>
-        )}
+        </section>
+        <section data-testid="operational-dashboard" className={ui.panelMuted}>
+          <h2 className={ui.h2}>Operational Co-Pilot</h2>
+          <p className={`mt-2 ${ui.body}`}>
+            Calculate a trip to activate live operational tracking
+          </p>
+        </section>
+        <section data-testid="environmental-dashboard" className={ui.panelMuted}>
+          <h2 className={ui.h2}>Environmental Awareness</h2>
+          <p className={`mt-2 ${ui.body}`}>
+            Calculate a trip for weather and road risk intelligence
+          </p>
+        </section>
+        <DashboardCard title="Fuel Intelligence" testId="fuel-card">
+          <p className={ui.value}>No fuel data yet</p>
+          <p className={`mt-2 ${ui.body}`}>Calculate a trip to see fuel intelligence</p>
+        </DashboardCard>
+        <DashboardCard title="Stop Recommendation" testId="stop-card">
+          <p className={ui.value}>No stop recommendation yet</p>
+          <p className={`mt-2 ${ui.body}`}>Calculate a trip for smart stop planning</p>
+        </DashboardCard>
 
         <DashboardCard title="Route Summary" testId="route-card">
-          {trip ? (
-            <>
-              <p className={ui.value}>
-                {trip.input.startPlace} → {trip.input.destinationPlace}
-              </p>
-              <p className={`mt-2 ${ui.body}`}>
-                {trip.route.distanceMiles.toLocaleString()} miles · {trip.route.etaLabel}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className={ui.value}>No route calculated yet</p>
-              <p className={`mt-2 ${ui.body}`}>Use Trip Planner above</p>
-            </>
-          )}
+          <p className={ui.value}>No route calculated yet</p>
+          <p className={`mt-2 ${ui.body}`}>Use Trip Planner above</p>
         </DashboardCard>
       </main>
     </div>

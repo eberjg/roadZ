@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
+import { openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
 
 test.describe("Trip calculator", () => {
   test.beforeEach(async ({ page }) => {
@@ -7,20 +8,18 @@ test.describe("Trip calculator", () => {
   });
   test("calculates trip from ZIPs, MPG, and gas price", async ({ page }) => {
     await page.goto("/");
-
-    await page.getByTestId("input-start-zip").fill("33301");
-    await page.getByTestId("input-destination-zip").fill("98402");
     await page.getByTestId("input-vehicle-mpg").fill("30");
     await page.getByTestId("input-gas-price").fill("4");
+    await page.getByTestId("input-start-zip").fill("33301");
+    await page.getByTestId("input-destination-zip").fill("98402");
     await page.getByTestId("btn-calculate-trip").click();
+    await page.getByTestId("cockpit-layout").waitFor({ state: "visible", timeout: 15_000 });
 
-    await expect(page.getByTestId("trip-planner-collapsed")).toBeVisible();
-    await expect(page.getByTestId("trip-planner-summary-distance")).toContainText("3,300");
-
-    await expect(page.getByTestId("route-card")).toContainText("33301");
-    await expect(page.getByTestId("route-card")).toContainText("98402");
-    await expect(page.getByTestId("route-card")).toContainText("3,300 miles");
-    await expect(page.getByTestId("fuel-card")).toContainText("$440.00");
+    await expect(page.getByTestId("cockpit-layout")).toBeVisible();
+    await expect(page.getByTestId("cockpit-trip-progress")).toContainText("3,300");
+    await expect(page.getByTestId("cockpit-trip-route")).toContainText("98402");
+    await openCockpitTab(page, "fuel");
+    await expect(page.getByTestId("fuel-total-cost")).toContainText("$440.00");
   });
 
   test("renders trip planner on mobile viewport", async ({ page }) => {
@@ -35,10 +34,9 @@ test.describe("Trip calculator", () => {
     await page.getByTestId("input-destination-zip").fill("98402");
     await page.getByTestId("input-vehicle-mpg").fill("30");
     await page.getByTestId("input-gas-price").fill("4");
-    await page.getByTestId("btn-calculate-trip").click();
+    await startCockpitTrip(page);
 
-    await expect(page.getByTestId("trip-planner-collapsed")).toBeVisible();
-    await expect(page.getByTestId("fuel-card")).toBeVisible();
-    await expect(page.getByTestId("route-card")).toBeVisible();
+    await expect(page.getByTestId("cockpit-layout")).toBeVisible();
+    await expect(page.getByTestId("route-map")).toBeVisible();
   });
 });

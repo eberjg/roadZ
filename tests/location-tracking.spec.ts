@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete, primeReturningDriver } from "./helpers/onboarding";
+import { openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
 import { enableLiveGps } from "./helpers/gps";
 
 async function mockGeolocation(page: import("@playwright/test").Page) {
@@ -66,12 +67,8 @@ async function mockGeolocation(page: import("@playwright/test").Page) {
 }
 
 async function startTrip(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByTestId("input-start-zip").fill("33301");
-  await page.getByTestId("input-destination-zip").fill("98402");
-  await page.getByTestId("input-vehicle-mpg").fill("30");
-  await page.getByTestId("input-gas-price").fill("4");
-  await page.getByTestId("btn-calculate-trip").click();
+  await startCockpitTrip(page);
+  await openCockpitTab(page, "gps");
   await expect(page.getByTestId("live-trip-tracker")).toBeVisible();
 }
 
@@ -126,6 +123,19 @@ test.describe("Live GPS tracker", () => {
     await expect(page.getByTestId("tracker-mode")).toContainText("live");
   });
 
+  test("recovers when storage still says denied but GPS works", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("rc_permission_state", "denied");
+    });
+    await mockGeolocation(page);
+    await startTrip(page);
+
+    await expect(page.getByTestId("gps-permission")).toContainText("prompt");
+    await enableLiveGps(page);
+    await expect(page.getByTestId("gps-permission")).toContainText("granted");
+    await expect(page.getByTestId("tracker-mode")).toContainText("live");
+  });
+
   test("auto-progress updates from movement", async ({ page }) => {
     await mockGeolocation(page);
     await primeReturningDriver(page);
@@ -149,6 +159,7 @@ test.describe("Live GPS tracker", () => {
     });
 
     await expect(page.getByTestId("movement-state")).toContainText("driving");
+    await openCockpitTab(page, "ops");
     await expect(page.getByTestId("trip-remaining-distance")).not.toContainText("3,300");
   });
 
@@ -203,6 +214,7 @@ test.describe("Live GPS tracker", () => {
     await page.getByTestId("gps-manual-mode-btn").click();
 
     await expect(page.getByTestId("tracker-mode")).toContainText("manual");
+    await openCockpitTab(page, "ops");
     await expect(page.getByTestId("trip-progress-slider")).toBeVisible();
   });
 

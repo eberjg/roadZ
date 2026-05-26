@@ -1,14 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { primeReturningDriver } from "./helpers/onboarding";
+import { enableManualTripProgress, openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
 
 async function calculateSampleTrip(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByTestId("input-start-zip").fill("33301");
-  await page.getByTestId("input-destination-zip").fill("98402");
-  await page.getByTestId("input-vehicle-mpg").fill("30");
-  await page.getByTestId("input-gas-price").fill("4");
-  await page.getByTestId("btn-calculate-trip").click();
-  await expect(page.getByTestId("fuel-card")).toBeVisible({ timeout: 15_000 });
+  await startCockpitTrip(page);
 }
 
 test.describe("Trip session persistence", () => {
@@ -18,7 +13,7 @@ test.describe("Trip session persistence", () => {
 
   test("restores active trip after reload", async ({ page }) => {
     await calculateSampleTrip(page);
-    await expect(page.getByTestId("operational-dashboard")).toBeVisible();
+    await enableManualTripProgress(page);
     await page.getByTestId("trip-progress-slider").fill("250");
     await page.waitForFunction(() =>
       Boolean(window.localStorage.getItem("rc_active_trip_session")),
@@ -26,11 +21,9 @@ test.describe("Trip session persistence", () => {
 
     await page.reload();
 
+    await expect(page.getByTestId("cockpit-layout")).toBeVisible();
     await expect(page.getByTestId("trip-restored-banner")).toBeVisible();
-    await expect(page.getByTestId("fuel-card")).toBeVisible();
-    await expect(page.getByTestId("trip-planner-summary-route")).toContainText("33301");
-    await expect(page.getByTestId("trip-planner-summary-route")).toContainText("98402");
-    await expect(page.getByTestId("route-card")).toContainText("98402");
+    await expect(page.getByTestId("cockpit-trip-route")).toContainText("98402");
     await expect(page.getByTestId("route-map-you")).toBeVisible();
     await expect(page.getByTestId("route-map-position-label")).toContainText("mi along route");
   });
@@ -39,6 +32,7 @@ test.describe("Trip session persistence", () => {
     await calculateSampleTrip(page);
     await page.getByTestId("toggle-live-data").uncheck();
     await expect(page.getByTestId("static-mode-banner")).toBeVisible();
+    await openCockpitTab(page, "gps");
     await expect(page.getByTestId("tracker-static-mode")).toBeVisible();
   });
 

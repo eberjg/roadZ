@@ -34,7 +34,7 @@ export function PermissionFlow({ onComplete }: PermissionFlowProps) {
     [onComplete],
   );
 
-  const requestGps = useCallback(async () => {
+  const requestGps = useCallback(async (recovery = false) => {
     if (!supportsGeolocation()) {
       setPermissionStep("unavailable");
       setPermissionMessage("GPS is not supported on this browser.");
@@ -43,8 +43,9 @@ export function PermissionFlow({ onComplete }: PermissionFlowProps) {
 
     setIsRequesting(true);
     setPermissionMessage(null);
+    setStoredPermissionState("prompt");
 
-    const result = await requestLocationAccess();
+    const result = await requestLocationAccess({ recovery });
     setIsRequesting(false);
 
     if (result.ok) {
@@ -80,10 +81,11 @@ export function PermissionFlow({ onComplete }: PermissionFlowProps) {
               step={permissionStep}
               message={permissionMessage}
               isRequesting={isRequesting}
-              onEnableGps={() => void requestGps()}
+              onEnableGps={() => void requestGps(false)}
               onRetry={() => {
                 setPermissionStep("request");
-                void requestGps();
+                setPermissionMessage(null);
+                void requestGps(true);
               }}
               onBack={() => setFlowStep("privacy")}
               onContinueManual={() => {

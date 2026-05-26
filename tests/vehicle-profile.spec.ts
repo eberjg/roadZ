@@ -34,7 +34,7 @@ test.describe("Vehicle profile wizard", () => {
     await page.getByTestId("wizard-vehicle-model").selectOption("NX 300");
     await page.getByTestId("wizard-vehicle-year").fill("2021");
     await page.getByTestId("wizard-vehicle-next").click();
-    await expect(page.getByTestId("vehicle-estimate-mpg")).toContainText("27 MPG");
+    await expect(page.getByTestId("vehicle-estimate-mpg")).toContainText("28 MPG");
     await page.getByTestId("wizard-vehicle-save").click();
     await expect(page.getByTestId("app-dashboard")).toBeVisible();
   });

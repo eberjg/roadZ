@@ -19,17 +19,65 @@ export type VehicleDatabaseEntry = {
   drivetrain?: VehicleDrivetrain;
   fuelType: VehicleFuelType;
   highwayMpg: number;
+  cityMpg: number;
   tankGallons: number;
   /** Electric range miles when fuelType is electric */
   electricRangeMiles?: number;
+  /** kWh per 100 miles for EV efficiency modeling */
+  kwhPer100Miles?: number;
 };
 
 export type VehicleEstimate = {
   highwayMpg: number;
+  cityMpg: number;
   tankGallons: number;
   rangeMiles: number;
   suggestedGasPrice: number;
   summary: string;
   isElectric: boolean;
   matchedDatabaseId: string | null;
+};
+
+export type VehicleEfficiencyProfile = {
+  highwayMpg: number;
+  cityMpg: number;
+  blendedMpg: number;
+  tankGallons: number;
+  rangeMiles: number;
+  fuelType: VehicleFuelType;
+  isElectric: boolean;
+  kwhPer100Miles: number | null;
+  databaseId: string | null;
+};
+
+export type DrivingConditions = {
+  averageSpeedMph: number;
+  weatherCondition?: string;
+  precipitationMm?: number;
+  fatigueScore?: number;
+  elevationRisk?: boolean;
+  idleMinutes?: number;
+  stopGoFactor?: number;
+};
+
+export type EfficiencyAdjustment = {
+  factor: string;
+  impactPercent: number;
+};
+
+export type LiveEfficiencyState = {
+  baseHighwayMpg: number;
+  effectiveMpg: number;
+  efficiencyScore: number;
+  adjustments: EfficiencyAdjustment[];
+  fuelBurnGallonsPerMile: number;
+  remainingRangeMiles: number;
+  projectedTripGallons: number;
+  projectedTripCost: number;
+};
+
+export type VehicleIntelligenceSnapshot = {
+  vehicle: VehicleEfficiencyProfile;
+  live: LiveEfficiencyState;
+  summary: string;
 };

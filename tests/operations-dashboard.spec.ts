@@ -1,14 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
+import { openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
 
 async function startTrip(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByTestId("input-start-zip").fill("33301");
-  await page.getByTestId("input-destination-zip").fill("98402");
-  await page.getByTestId("input-vehicle-mpg").fill("30");
-  await page.getByTestId("input-gas-price").fill("4");
-  await page.getByTestId("btn-calculate-trip").click();
-  await expect(page.getByTestId("operational-dashboard")).toBeVisible({ timeout: 15_000 });
+  await startCockpitTrip(page);
+  await openCockpitTab(page, "ops");
 }
 
 test.describe("Operational dashboard", () => {

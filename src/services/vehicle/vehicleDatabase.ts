@@ -9,8 +9,9 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     yearTo: 2024,
     drivetrain: "awd",
     fuelType: "gas",
-    highwayMpg: 27,
-    tankGallons: 14.5,
+    highwayMpg: 28,
+    cityMpg: 22,
+    tankGallons: 15.9,
   },
   {
     id: "tesla-modely",
@@ -21,8 +22,10 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     drivetrain: "electric",
     fuelType: "electric",
     highwayMpg: 117,
+    cityMpg: 125,
     tankGallons: 0,
     electricRangeMiles: 310,
+    kwhPer100Miles: 28,
   },
   {
     id: "ford-f150",
@@ -33,7 +36,19 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     drivetrain: "4wd",
     fuelType: "gas",
     highwayMpg: 22,
+    cityMpg: 18,
     tankGallons: 26,
+  },
+  {
+    id: "toyota-prius",
+    make: "Toyota",
+    model: "Prius",
+    yearFrom: 2016,
+    yearTo: 2026,
+    fuelType: "hybrid",
+    highwayMpg: 52,
+    cityMpg: 58,
+    tankGallons: 11.3,
   },
   {
     id: "toyota-camry",
@@ -43,6 +58,7 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     yearTo: 2026,
     fuelType: "gas",
     highwayMpg: 32,
+    cityMpg: 26,
     tankGallons: 15.8,
   },
   {
@@ -53,6 +69,7 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     yearTo: 2026,
     fuelType: "hybrid",
     highwayMpg: 38,
+    cityMpg: 33,
     tankGallons: 14,
   },
   {
@@ -63,6 +80,7 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     yearTo: 2030,
     fuelType: "gas",
     highwayMpg: 30,
+    cityMpg: 24,
     tankGallons: 15,
   },
   {
@@ -73,6 +91,7 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     yearTo: 2030,
     fuelType: "gas",
     highwayMpg: 24,
+    cityMpg: 20,
     tankGallons: 18,
   },
   {
@@ -83,6 +102,7 @@ export const VEHICLE_DATABASE: VehicleDatabaseEntry[] = [
     yearTo: 2030,
     fuelType: "gas",
     highwayMpg: 20,
+    cityMpg: 16,
     tankGallons: 24,
   },
 ];
@@ -137,7 +157,7 @@ export function fallbackByFuelType(fuelType: VehicleFuelType, year: number): Veh
     fuelType === "electric"
       ? VEHICLE_DATABASE.find((e) => e.id === "tesla-modely")!
       : fuelType === "hybrid"
-        ? VEHICLE_DATABASE.find((e) => e.id === "honda-crv")!
+        ? VEHICLE_DATABASE.find((e) => e.id === "toyota-prius")!
         : fuelType === "diesel"
           ? VEHICLE_DATABASE.find((e) => e.id === "ford-f150")!
           : VEHICLE_DATABASE.find((e) => e.id === "generic-sedan")!;
@@ -145,6 +165,7 @@ export function fallbackByFuelType(fuelType: VehicleFuelType, year: number): Veh
   return {
     ...base,
     highwayMpg: Math.round(base.highwayMpg * ageFactor),
+    cityMpg: Math.round(base.cityMpg * ageFactor),
     tankGallons: base.tankGallons,
   };
 }
