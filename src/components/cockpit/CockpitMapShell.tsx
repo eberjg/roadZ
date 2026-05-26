@@ -38,6 +38,7 @@ export type CockpitShellData = {
   relayEnabled: boolean;
   familySentAtMs: number | null;
   safetyRelayOn: boolean;
+  gpsStatusLabel: string;
 };
 
 type CockpitMapShellProps = {
@@ -168,6 +169,8 @@ export function CockpitMapShell({
           speedMph={data.speedMph}
           efficiencyScore={data.efficiencyScore}
           driveTimeLabel={data.driveTimeLabel}
+          liveActive={data.liveActive}
+          gpsStatusLabel={data.gpsStatusLabel}
         />
         <FamilyUpdateStrip
           sentAtMs={data.familySentAtMs}

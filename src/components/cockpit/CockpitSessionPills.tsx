@@ -71,7 +71,12 @@ export function CockpitSessionPills({
             }}
             className="h-4 w-4 shrink-0 accent-cyan-400"
           />
-          <span className="truncate text-[11px] font-medium text-zinc-200">Live data</span>
+          <span className="truncate text-[11px] font-medium text-zinc-200">
+            Live data
+            {showLiveData ? (
+              <span className="ml-1 font-normal text-zinc-500">· GPS on map</span>
+            ) : null}
+          </span>
         </label>
         <button
           type="button"

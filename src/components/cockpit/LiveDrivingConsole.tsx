@@ -4,12 +4,16 @@ type LiveDrivingConsoleProps = {
   speedMph: number;
   efficiencyScore: number;
   driveTimeLabel: string;
+  liveActive: boolean;
+  gpsStatusLabel: string;
 };
 
 export function LiveDrivingConsole({
   speedMph,
   efficiencyScore,
   driveTimeLabel,
+  liveActive,
+  gpsStatusLabel,
 }: LiveDrivingConsoleProps) {
   const arcPercent = Math.min(100, efficiencyScore);
 
@@ -20,9 +24,21 @@ export function LiveDrivingConsole({
     >
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-400/80">
-            Live driving
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-400/80">
+              Live driving
+            </p>
+            <span
+              data-testid="cockpit-gps-status"
+              className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide ${
+                liveActive
+                  ? "bg-emerald-500/20 text-emerald-300"
+                  : "bg-zinc-700/80 text-zinc-400"
+              }`}
+            >
+              {gpsStatusLabel}
+            </span>
+          </div>
           <p data-testid="cockpit-speed" className="text-xl font-bold leading-tight text-white">
             {Math.round(speedMph)}{" "}
             <span className="text-xs font-semibold text-zinc-500">MPH</span>

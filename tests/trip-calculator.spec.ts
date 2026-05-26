@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
-import { openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
+import { openCockpitTab } from "./helpers/cockpit";
 import { setTripFuelInputs } from "./helpers/tripFuel";
 
 test.describe("Trip calculator", () => {

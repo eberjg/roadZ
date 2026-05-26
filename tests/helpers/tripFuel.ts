@@ -17,10 +17,11 @@ export async function setTripFuelInputs(
 
 export async function openFamilySafetyPanel(page: Page) {
   const details = page.getByTestId("family-safety-details");
-  if ((await details.count()) > 0) {
-    const open = await details.getAttribute("open");
-    if (!open) {
-      await details.locator("summary").click();
-    }
+  if ((await details.count()) === 0) {
+    return;
   }
+  if (!(await details.getAttribute("open"))) {
+    await details.locator("summary").click();
+  }
+  await page.getByTestId("family-safety-panel").waitFor({ state: "visible" });
 }

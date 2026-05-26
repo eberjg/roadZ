@@ -18,7 +18,7 @@ import type {
 } from "./types";
 
 const RELAY_STATE_KEY = "rc_safety_relay_state";
-const GPS_LOST_MS = 20 * 60 * 1000;
+export const GPS_LOST_MS = 20 * 60 * 1000;
 const STALL_MS = 45 * 60 * 1000;
 
 function canUseStorage(): boolean {

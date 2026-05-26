@@ -54,10 +54,7 @@ export function evaluateBroadcastTriggers(input: {
 }): { events: BroadcastEventType[]; nextState: SafetyRelayState } {
   const { state, context, preferences, stopCount, previousStopCount } = input;
   const events: BroadcastEventType[] = [];
-  const nextState: SafetyRelayState = {
-    ...state,
-    lastProgressMs: Date.now(),
-  };
+  const nextState: SafetyRelayState = { ...state };
 
   const mark = (eventType: BroadcastEventType, suffix = "") => {
     const key = eventKey(state.tripId, eventType, suffix);

@@ -7,6 +7,8 @@ import { FuelWarnings } from "@/components/fuel/FuelWarnings";
 import { StopRecommendation } from "@/components/fuel/StopRecommendation";
 import { TripSegments } from "@/components/fuel/TripSegments";
 import { LiveTripTracker } from "@/components/location/LiveTripTracker";
+import { useTripLocationTracking } from "@/hooks/useTripLocationTracking";
+import { formatDurationLabel } from "@/services/location/sessionEngine";
 import { OperationalDashboard } from "@/components/operations/OperationalDashboard";
 import { EnvironmentalDashboard } from "@/components/weather/EnvironmentalDashboard";
 import { RouteMap } from "@/components/map/RouteMap";
@@ -17,7 +19,7 @@ import {
   getSafetyPreferences,
   subscribeSafetyStorage,
 } from "@/services/safety/contactManager";
-import { loadRelayState } from "@/services/safety/safetyEngine";
+import { GPS_LOST_MS, loadRelayState } from "@/services/safety/safetyEngine";
 import { defaultSafetyPreferences, type TripBroadcastContext } from "@/services/safety/types";
 import { DEFAULT_AVERAGE_SPEED_MPH } from "@/services/fuel/fuelMath";
 import { buildFuelIntelligence } from "@/services/fuel/fuelService";
@@ -64,6 +66,16 @@ export function OperationalCockpit({
 }: OperationalCockpitProps) {
   const [weather, setWeather] = useState<WeatherIntelligence | null>(null);
   const vehicleProfile = useMemo(() => getVehicleProfile(), []);
+
+  const locationTracking = useTripLocationTracking({
+    totalDistanceMiles: trip.route.distanceMiles,
+    liveDataEnabled: showLiveData,
+    initialProgressMiles: completedDistanceMiles,
+    onAutoProgress,
+    onModeChange,
+    onLocationSample,
+  });
+  const { tracking, gpsSampleAgeMs } = locationTracking;
 
   const { fuelIntelligence, operational, vehicleIntelligence } = useMemo(() => {
     const baseFuel = buildFuelIntelligence({
@@ -198,7 +210,11 @@ export function OperationalCockpit({
       operationalStatus: operational.status,
       nextStopName: fuelIntelligence.recommendedNextStop?.station.name ?? null,
       isOvernightStop: Boolean(overnightEvent),
-      gpsStale: false,
+      gpsStale:
+        showLiveData &&
+        trackerMode === "live" &&
+        gpsSampleAgeMs !== null &&
+        gpsSampleAgeMs > GPS_LOST_MS,
       tripStalled: false,
     };
   }, [
@@ -209,6 +225,9 @@ export function OperationalCockpit({
     operational,
     fuelIntelligence,
     preferences.driverDisplayName,
+    showLiveData,
+    trackerMode,
+    gpsSampleAgeMs,
   ]);
 
   const { emergency } = useSafetyRelay({
@@ -216,14 +235,34 @@ export function OperationalCockpit({
     context: broadcastContext,
     stopCount,
     enabled: preferences.relayEnabled,
-    gpsSampleAgeMs: null,
+    gpsSampleAgeMs: showLiveData && trackerMode === "live" ? gpsSampleAgeMs : null,
   });
 
   const nextStop = fuelIntelligence.recommendedNextStop;
-  const speedMph =
-    showLiveData && trackerMode === "live"
-      ? Math.max(DEFAULT_AVERAGE_SPEED_MPH, completedDistanceMiles > 0 ? 62 : 0)
-      : DEFAULT_AVERAGE_SPEED_MPH;
+  const isLiveTracking = showLiveData && trackerMode === "live";
+  const speedMph = isLiveTracking
+    ? tracking.speedMph > 0
+      ? tracking.speedMph
+      : tracking.movementState === "driving"
+        ? DEFAULT_AVERAGE_SPEED_MPH
+        : 0
+    : DEFAULT_AVERAGE_SPEED_MPH;
+
+  const driveTimeLabel = isLiveTracking
+    ? formatDurationLabel(tracking.session.activeDrivingMs)
+    : operational.progress.drivingSessionDurationLabel;
+
+  const gpsStatusLabel = !showLiveData
+    ? "Static"
+    : trackerMode !== "live"
+      ? "Manual"
+      : tracking.permission !== "granted"
+        ? "GPS off"
+        : gpsSampleAgeMs !== null && gpsSampleAgeMs < 30_000
+          ? "GPS live"
+          : tracking.gpsHealth === "stale"
+            ? "GPS weak"
+            : "Acquiring…";
 
   const shellData = {
     destination: trip.input.destinationPlace,
@@ -234,9 +273,10 @@ export function OperationalCockpit({
     efficiencyScore: vehicleIntelligence.live.efficiencyScore,
     liveMpg: vehicleIntelligence.live.effectiveMpg,
     fuelRangeMiles: vehicleIntelligence.live.remainingRangeMiles,
-    liveActive: showLiveData && trackerMode === "live",
+    liveActive: isLiveTracking,
     speedMph,
-    driveTimeLabel: operational.progress.drivingSessionDurationLabel,
+    driveTimeLabel,
+    gpsStatusLabel,
     temperatureF: weather?.current.temperatureF ?? 78,
     weatherSummary: weather?.current.summary ?? "Loading conditions…",
     weatherRisk: weather?.risk.level ?? "NORMAL",
@@ -327,10 +367,7 @@ export function OperationalCockpit({
           startPlace={trip.input.startPlace}
           destinationPlace={trip.input.destinationPlace}
           liveDataEnabled={showLiveData}
-          initialProgressMiles={completedDistanceMiles}
-          onAutoProgress={onAutoProgress}
-          onModeChange={onModeChange}
-          onLocationSample={onLocationSample}
+          location={locationTracking}
         />
       }
       safetyPanel={<FamilySafetyPanel tripId={tripId} broadcastContext={broadcastContext} />}

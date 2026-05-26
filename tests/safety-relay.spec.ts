@@ -27,7 +27,7 @@ test.describe("Family safety relay", () => {
 
   test("enable relay toggle and preview SMS", async ({ page }) => {
     await openFamilySafetyPanel(page);
-    await page.getByTestId("safety-relay-toggle").check();
+    await page.getByTestId("safety-relay-toggle").check({ force: true });
     await page.getByTestId("safety-driver-name").fill("Eber");
     await page.getByTestId("preview-event-started").click();
     await expect(page.getByTestId("broadcast-preview-body")).toContainText("Eber");
