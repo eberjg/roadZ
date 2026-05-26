@@ -5,17 +5,11 @@ test.describe("roadZ dashboard", () => {
   test.beforeEach(async ({ page }) => {
     await primeOnboardingComplete(page);
   });
-  test("shows title and all dashboard cards", async ({ page }) => {
+  test("shows title and trip planner", async ({ page }) => {
     await page.goto("/");
 
     await expect(page.getByTestId("dashboard-title")).toHaveText("roadZ");
-    await expect(page.getByTestId("route-card")).toBeVisible();
-    await expect(page.getByTestId("fuel-card")).toBeVisible();
-    await expect(page.getByTestId("stop-card")).toBeVisible();
-
     await expect(page.getByTestId("trip-planner")).toBeVisible();
-    await expect(page.getByTestId("route-card")).toContainText("Route Summary");
-    await expect(page.getByTestId("fuel-card")).toContainText("Fuel Intelligence");
-    await expect(page.getByTestId("stop-card")).toContainText("Stop Recommendation");
+    await expect(page.getByTestId("vehicle-form")).toBeVisible();
   });
 });

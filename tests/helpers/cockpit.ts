@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { setTripFuelInputs } from "./tripFuel";
 
 export type CockpitTab = "mission" | "fuel" | "ops" | "gps" | "safety";
 
@@ -8,8 +9,7 @@ export async function startCockpitTrip(page: Page, options?: { skipGoto?: boolea
   }
   await page.getByTestId("input-start-zip").fill("33301");
   await page.getByTestId("input-destination-zip").fill("98402");
-  await page.getByTestId("input-vehicle-mpg").fill("30");
-  await page.getByTestId("input-gas-price").fill("4");
+  await setTripFuelInputs(page, { mpg: "30", gasPrice: "4" });
   await page.getByTestId("btn-calculate-trip").click();
   await expect(page.getByTestId("cockpit-layout")).toBeVisible({ timeout: 15_000 });
 }

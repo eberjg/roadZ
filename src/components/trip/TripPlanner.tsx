@@ -9,7 +9,7 @@ import { requestLocationAccess, supportsGeolocation } from "@/services/location/
 import { setStoredPermissionState } from "@/services/preferences/appStorage";
 import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
 import { getVehicleProfile, setVehicleProfile } from "@/services/vehicle/vehicleStorage";
-import { VehicleSelector } from "@/components/vehicle/VehicleSelector";
+import { VehicleForm } from "@/components/vehicle/VehicleForm";
 import type { VehicleProfile } from "@/services/vehicle/types";
 import { extractUsZip } from "@/services/maps/placeResolver";
 import { calculateTrip } from "@/services/trip/calculateTrip";
@@ -88,7 +88,6 @@ export function TripPlanner({
   );
   const [vehicleMpg, setVehicleMpg] = useState(fuelDefaults.mpg);
   const [gasPrice, setGasPrice] = useState(fuelDefaults.gas);
-  const [showAdvancedFuel, setShowAdvancedFuel] = useState(false);
   const [result, setResult] = useState<TripResult | null>(initialResult ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -144,7 +143,7 @@ export function TripPlanner({
       return;
     }
     if (!Number.isFinite(mpg) || mpg <= 0) {
-      setError("Enter a valid vehicle MPG greater than 0.");
+      setError("Pick your vehicle trim so we have a valid MPG.");
       return;
     }
     if (!Number.isFinite(price) || price <= 0) {
@@ -218,10 +217,8 @@ export function TripPlanner({
     <section data-testid="trip-planner" className={ui.panel}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className={ui.h2}>Trip Planner</h2>
-          <p className={`mt-2 ${ui.body}`}>
-            Set start and destination — your vehicle MPG fills in automatically from EPA data.
-          </p>
+          <h2 className={ui.h2}>Plan trip</h2>
+          <p className={`mt-1 text-sm ${ui.bodyMuted}`}>Where to · your car · go</p>
         </div>
         {activeTripSummary ? (
           <button
@@ -236,98 +233,80 @@ export function TripPlanner({
       </div>
 
       <form
-        className="mt-6 flex flex-col gap-5"
+        className="mt-5 flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
           void handleCalculate();
         }}
       >
-        <AddressAutocomplete
-          label="Start"
-          testId="input-start-zip"
-          placeholder="e.g. 123 Main St, Miami FL or 33301"
-          value={startPlace}
-          onValueChange={setStartPlace}
-          showUseCurrentLocation
-          locationLoading={locationLoading}
-          onUseCurrentLocation={() => void fillStartFromCurrentLocation()}
-        />
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+          <AddressAutocomplete
+            label="From"
+            testId="input-start-zip"
+            placeholder="Start address or ZIP"
+            value={startPlace}
+            onValueChange={setStartPlace}
+            showUseCurrentLocation
+            locationLoading={locationLoading}
+            onUseCurrentLocation={() => void fillStartFromCurrentLocation()}
+          />
+          <AddressAutocomplete
+            label="To"
+            testId="input-destination-zip"
+            placeholder="Destination address or ZIP"
+            value={destinationPlace}
+            onValueChange={setDestinationPlace}
+          />
+        </div>
 
-        <AddressAutocomplete
-          label="Destination"
-          testId="input-destination-zip"
-          placeholder="e.g. 1600 Broadway, Tacoma WA or 98402"
-          value={destinationPlace}
-          onValueChange={setDestinationPlace}
-        />
-
-        <VehicleSelector
-          compact
+        <VehicleForm
           value={vehicleProfile}
+          defaultExpanded={false}
+          gasPrice={gasPrice}
+          showGasPrice
+          onGasPriceChange={setGasPrice}
           onChange={(profile) => {
             const next = { ...profile, profileComplete: true };
             setVehicleProfileState(next);
             setVehicleProfile(next);
             applyVehicleFuel(next);
           }}
-          showEstimate
         />
 
-        <button
-          type="button"
-          data-testid="trip-planner-advanced-fuel"
-          onClick={() => setShowAdvancedFuel((open) => !open)}
-          className="text-left text-sm font-semibold text-cyan-300"
-        >
-          {showAdvancedFuel ? "Hide" : "Adjust"} MPG & gas price
-        </button>
-
-        <label className={showAdvancedFuel ? "block" : "sr-only"}>
-          <span className={ui.label}>Vehicle MPG</span>
-          <input
-            data-testid="input-vehicle-mpg"
-            type="number"
-            min="1"
-            step="0.1"
-            placeholder="e.g. 30"
-            value={vehicleMpg}
-            onChange={(event) => setVehicleMpg(event.target.value)}
-            className={ui.input}
-            tabIndex={showAdvancedFuel ? 0 : -1}
-          />
-        </label>
-
-        <label className={showAdvancedFuel ? "block" : "sr-only"}>
-          <span className={ui.label}>Gas Price ($/gal)</span>
-          <input
-            data-testid="input-gas-price"
-            type="number"
-            min="0.01"
-            step="0.01"
-            placeholder="e.g. 4.00"
-            value={gasPrice}
-            onChange={(event) => setGasPrice(event.target.value)}
-            className={ui.input}
-            tabIndex={showAdvancedFuel ? 0 : -1}
-          />
-        </label>
+        <input
+          data-testid="input-vehicle-mpg"
+          type="text"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          value={vehicleMpg}
+          onChange={(e) => setVehicleMpg(e.target.value)}
+        />
+        <input
+          data-testid="input-gas-price"
+          type="text"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          value={gasPrice}
+          onChange={(e) => setGasPrice(e.target.value)}
+        />
 
         {error ? <ErrorState message={error} testId="trip-planner-error" /> : null}
-
         {isLoading ? <LoadingState /> : null}
 
         <button
           data-testid="btn-calculate-trip"
           type="submit"
           disabled={isLoading}
-          className={`mt-2 ${ui.btnPrimaryBlock}`}
+          className={ui.btnPrimaryBlock}
         >
-          Calculate Trip
+          Calculate trip
         </button>
       </form>
 
       {result && !isCollapsed ? (
-        <div className="mt-8">
+        <div className="mt-6">
           <TripResults result={result} />
         </div>
       ) : null}

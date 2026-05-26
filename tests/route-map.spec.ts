@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
 import { enableManualTripProgress, startCockpitTrip } from "./helpers/cockpit";
+import { setTripFuelInputs } from "./helpers/tripFuel";
 
 async function calculateSampleTrip(page: import("@playwright/test").Page) {
   await startCockpitTrip(page);
@@ -49,8 +50,7 @@ test.describe("Route map and live routing", () => {
     await page.goto("/");
     await page.getByTestId("input-start-zip").fill("33301");
     await page.getByTestId("input-destination-zip").fill("98402");
-    await page.getByTestId("input-vehicle-mpg").fill("30");
-    await page.getByTestId("input-gas-price").fill("4");
+    await setTripFuelInputs(page, { mpg: "30", gasPrice: "4" });
     await page.getByTestId("btn-calculate-trip").click();
 
     await expect(page.getByTestId("route-loading")).toBeVisible();
@@ -62,8 +62,7 @@ test.describe("Route map and live routing", () => {
 
     await page.getByTestId("input-start-zip").fill("");
     await page.getByTestId("input-destination-zip").fill("98402");
-    await page.getByTestId("input-vehicle-mpg").fill("30");
-    await page.getByTestId("input-gas-price").fill("4");
+    await setTripFuelInputs(page, { mpg: "30", gasPrice: "4" });
     await page.getByTestId("btn-calculate-trip").click();
 
     await expect(page.getByTestId("trip-planner-error")).toContainText("start and destination");

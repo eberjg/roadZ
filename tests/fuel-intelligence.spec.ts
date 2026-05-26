@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
 import { openCockpitTab } from "./helpers/cockpit";
+import { setTripFuelInputs } from "./helpers/tripFuel";
 
 async function calculateTrip(
   page: import("@playwright/test").Page,
@@ -9,8 +10,7 @@ async function calculateTrip(
   await page.goto("/");
   await page.getByTestId("input-start-zip").fill("33301");
   await page.getByTestId("input-destination-zip").fill("98402");
-  await page.getByTestId("input-vehicle-mpg").fill(options?.mpg ?? "30");
-  await page.getByTestId("input-gas-price").fill(options?.gasPrice ?? "4");
+  await setTripFuelInputs(page, { mpg: options?.mpg ?? "30", gasPrice: options?.gasPrice ?? "4" });
   await page.getByTestId("btn-calculate-trip").click();
   await expect(page.getByTestId("cockpit-layout")).toBeVisible({ timeout: 15_000 });
   await openCockpitTab(page, "fuel");

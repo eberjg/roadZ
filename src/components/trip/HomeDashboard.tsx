@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { DashboardCard } from "@/components/DashboardCard";
 import { DashboardSettings } from "@/components/settings/DashboardSettings";
 import { motion } from "@/components/ui/motion";
 import { ui } from "@/components/ui/theme";
@@ -10,7 +9,6 @@ import { FamilySafetyPanel } from "@/components/safety/FamilySafetyPanel";
 import { clearRelayState } from "@/services/safety/safetyEngine";
 import { TripPlanner } from "@/components/trip/TripPlanner";
 import { VehicleProfileWizard } from "@/components/vehicle/VehicleProfileWizard";
-import { VehicleSummary } from "@/components/vehicle/VehicleSummary";
 import {
   defaultDashboardPreferences,
   getDashboardPreferences,
@@ -273,43 +271,21 @@ export function HomeDashboard() {
           onStartNewTrip={handleNewTrip}
         />
 
-        <VehicleSummary onEdit={() => setShowVehicleWizard(true)} />
-
-        <FamilySafetyPanel />
-
         {tripPlanner}
 
-        <section data-testid="live-trip-tracker" className={ui.panelMuted}>
-          <h2 className={ui.h2}>Live Trip Tracker</h2>
-          <p className={`mt-2 ${ui.body}`}>
-            Start a trip to enable GPS tracking and movement detection
+        <section className={`${ui.panelMuted} space-y-2`}>
+          <p className={ui.bodyMuted}>
+            After you calculate a trip, roadZ opens the live map cockpit with fuel, weather,
+            GPS, and family safety tools.
           </p>
         </section>
-        <section data-testid="operational-dashboard" className={ui.panelMuted}>
-          <h2 className={ui.h2}>Operational Co-Pilot</h2>
-          <p className={`mt-2 ${ui.body}`}>
-            Calculate a trip to activate live operational tracking
-          </p>
-        </section>
-        <section data-testid="environmental-dashboard" className={ui.panelMuted}>
-          <h2 className={ui.h2}>Environmental Awareness</h2>
-          <p className={`mt-2 ${ui.body}`}>
-            Calculate a trip for weather and road risk intelligence
-          </p>
-        </section>
-        <DashboardCard title="Fuel Intelligence" testId="fuel-card">
-          <p className={ui.value}>No fuel data yet</p>
-          <p className={`mt-2 ${ui.body}`}>Calculate a trip to see fuel intelligence</p>
-        </DashboardCard>
-        <DashboardCard title="Stop Recommendation" testId="stop-card">
-          <p className={ui.value}>No stop recommendation yet</p>
-          <p className={`mt-2 ${ui.body}`}>Calculate a trip for smart stop planning</p>
-        </DashboardCard>
 
-        <DashboardCard title="Route Summary" testId="route-card">
-          <p className={ui.value}>No route calculated yet</p>
-          <p className={`mt-2 ${ui.body}`}>Use Trip Planner above</p>
-        </DashboardCard>
+        <details data-testid="family-safety-details" className={ui.panelMuted}>
+          <summary className={`cursor-pointer ${ui.h2}`}>Family safety</summary>
+          <div className="mt-4">
+            <FamilySafetyPanel />
+          </div>
+        </details>
       </main>
     </div>
   );

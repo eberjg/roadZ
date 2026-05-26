@@ -48,7 +48,15 @@ async function mockGeolocationGranted(page: import("@playwright/test").Page) {
 
 async function completeVehicleWizard(page: import("@playwright/test").Page) {
   await expect(page.getByTestId("vehicle-profile-wizard")).toBeVisible();
-  await page.getByTestId("wizard-vehicle-next").click();
+  const trim = page.getByTestId("wizard-vehicle-trim");
+  await trim.waitFor({ state: "visible" });
+  const trimValue = await trim.inputValue();
+  if (!trimValue) {
+    const options = trim.locator("option:not([value=''])");
+    if ((await options.count()) > 0) {
+      await trim.selectOption({ index: 1 });
+    }
+  }
   await page.getByTestId("wizard-vehicle-save").click();
 }
 
@@ -142,6 +150,6 @@ test.describe("Onboarding regression", () => {
   test("dashboard still renders after onboarding gate", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("trip-planner")).toBeVisible();
-    await expect(page.getByTestId("route-card")).toBeVisible();
+    await expect(page.getByTestId("vehicle-form")).toBeVisible();
   });
 });

@@ -46,8 +46,7 @@ test.describe("Trip session persistence", () => {
 
     await page.getByTestId("btn-start-new-trip").click();
     await expect(page.getByTestId("trip-restored-banner")).toHaveCount(0);
-    await expect(page.getByTestId("operational-dashboard")).toContainText(
-      "Calculate a trip",
-    );
+    await expect(page.getByTestId("trip-planner")).toBeVisible();
+    await expect(page.getByTestId("vehicle-form")).toBeVisible();
   });
 });

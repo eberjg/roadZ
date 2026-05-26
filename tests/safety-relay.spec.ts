@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
 import { openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
+import { openFamilySafetyPanel } from "./helpers/tripFuel";
 import { etaDriftExceeded } from "../src/services/safety/etaMonitor";
 import { formatSafetyMessage } from "../src/services/safety/smsRelay";
 
@@ -11,6 +12,7 @@ test.describe("Family safety relay", () => {
   });
 
   test("add and remove trusted contact", async ({ page }) => {
+    await openFamilySafetyPanel(page);
     await expect(page.getByTestId("family-safety-panel")).toBeVisible();
     await page.getByTestId("contact-name-input").fill("Alex");
     await page.getByTestId("contact-phone-input").fill("+15551234567");
@@ -24,6 +26,7 @@ test.describe("Family safety relay", () => {
   });
 
   test("enable relay toggle and preview SMS", async ({ page }) => {
+    await openFamilySafetyPanel(page);
     await page.getByTestId("safety-relay-toggle").check();
     await page.getByTestId("safety-driver-name").fill("Eber");
     await page.getByTestId("preview-event-started").click();
@@ -61,6 +64,7 @@ test.describe("Family safety relay", () => {
   });
 
   test("emergency warning state is visible when relay evaluates risk", async ({ page }) => {
+    await openFamilySafetyPanel(page);
     await page.getByTestId("safety-relay-toggle").check();
     await page.getByTestId("safety-emergency-only-toggle").check();
     await expect(page.getByTestId("family-safety-panel")).toBeVisible();
@@ -76,6 +80,7 @@ test.describe("Family safety relay", () => {
 
   test("mobile safety panel layout", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    await openFamilySafetyPanel(page);
     await expect(page.getByTestId("family-safety-panel")).toBeVisible();
     await page.getByTestId("contact-name-input").fill("Sam");
     await page.getByTestId("contact-phone-input").fill("5559876543");

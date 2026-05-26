@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
 import { openCockpitTab, startCockpitTrip } from "./helpers/cockpit";
+import { setTripFuelInputs } from "./helpers/tripFuel";
 
 test.describe("Trip calculator", () => {
   test.beforeEach(async ({ page }) => {
@@ -8,8 +9,7 @@ test.describe("Trip calculator", () => {
   });
   test("calculates trip from ZIPs, MPG, and gas price", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("input-vehicle-mpg").fill("30");
-    await page.getByTestId("input-gas-price").fill("4");
+    await setTripFuelInputs(page, { mpg: "30", gasPrice: "4" });
     await page.getByTestId("input-start-zip").fill("33301");
     await page.getByTestId("input-destination-zip").fill("98402");
     await page.getByTestId("btn-calculate-trip").click();
@@ -32,9 +32,9 @@ test.describe("Trip calculator", () => {
 
     await page.getByTestId("input-start-zip").fill("33301");
     await page.getByTestId("input-destination-zip").fill("98402");
-    await page.getByTestId("input-vehicle-mpg").fill("30");
-    await page.getByTestId("input-gas-price").fill("4");
-    await startCockpitTrip(page);
+    await setTripFuelInputs(page, { mpg: "30", gasPrice: "4" });
+    await page.getByTestId("btn-calculate-trip").click();
+    await page.getByTestId("cockpit-layout").waitFor({ state: "visible", timeout: 15_000 });
 
     await expect(page.getByTestId("cockpit-layout")).toBeVisible();
     await expect(page.getByTestId("route-map")).toBeVisible();
