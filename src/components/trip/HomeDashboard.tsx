@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { DashboardCard } from "@/components/DashboardCard";
+import { DashboardSettings } from "@/components/settings/DashboardSettings";
 import { motion } from "@/components/ui/motion";
 import { ui } from "@/components/ui/theme";
 import { FuelPanel } from "@/components/fuel/FuelPanel";
@@ -14,9 +15,22 @@ import { EnvironmentalDashboard } from "@/components/weather/EnvironmentalDashbo
 import { RouteMap } from "@/components/map/RouteMap";
 import { RouteSummary } from "@/components/map/RouteSummary";
 import { TripPlanner } from "@/components/trip/TripPlanner";
+import {
+  defaultDashboardPreferences,
+  getDashboardPreferences,
+  subscribeAppStorage,
+} from "@/services/preferences/appStorage";
+import {
+  clearTripSession,
+  loadTripSession,
+  saveTripSession,
+  subscribeTripSession,
+} from "@/services/preferences/tripSessionStorage";
 import { buildFuelIntelligence } from "@/services/fuel/fuelService";
 import type { FuelIntelligence } from "@/services/fuel/types";
-import type { RouteData } from "@/services/maps/types";
+import type { LocationSample } from "@/services/location/types";
+import { resolveYouAreHere } from "@/services/maps/routeProgress";
+import type { LngLat, RouteData } from "@/services/maps/types";
 import type { TripInput, TripResult } from "@/services/trip/types";
 
 type TripState = {
@@ -25,10 +39,102 @@ type TripState = {
   route: RouteData;
 };
 
+function sessionToTripState(saved: NonNullable<ReturnType<typeof loadTripSession>>): TripState {
+  return {
+    input: saved.input,
+    result: saved.result,
+    route: saved.route,
+  };
+}
+
 export function HomeDashboard() {
-  const [trip, setTrip] = useState<TripState | null>(null);
-  const [completedDistanceMiles, setCompletedDistanceMiles] = useState(0);
-  const [trackerMode, setTrackerMode] = useState<"live" | "manual">("manual");
+  const savedSession = useSyncExternalStore(
+    subscribeTripSession,
+    loadTripSession,
+    () => null,
+  );
+
+  const [tripOverride, setTripOverride] = useState<TripState | null | undefined>(undefined);
+  const [progressOverride, setProgressOverride] = useState<number | undefined>(undefined);
+  const [modeOverride, setModeOverride] = useState<"live" | "manual" | undefined>(undefined);
+  const [livePositionOverride, setLivePositionOverride] = useState<LngLat | null | undefined>(
+    undefined,
+  );
+  const [sessionCleared, setSessionCleared] = useState(false);
+  const [plannerExpanded, setPlannerExpanded] = useState(false);
+
+  const restoredTrip = useMemo(
+    () => (savedSession ? sessionToTripState(savedSession) : null),
+    [savedSession],
+  );
+
+  const trip = sessionCleared
+    ? tripOverride ?? null
+    : tripOverride !== undefined
+      ? tripOverride
+      : restoredTrip;
+
+  const completedDistanceMiles =
+    progressOverride ?? savedSession?.completedDistanceMiles ?? 0;
+  const trackerMode = modeOverride ?? savedSession?.trackerMode ?? "manual";
+  const livePosition =
+    livePositionOverride !== undefined
+      ? livePositionOverride
+      : savedSession?.lastKnownPosition ?? null;
+  const tripRestored = Boolean(savedSession && tripOverride === undefined && !sessionCleared);
+
+  const setCompletedDistanceMiles = useCallback((miles: number) => {
+    setProgressOverride(miles);
+  }, []);
+
+  const setTrackerMode = useCallback((mode: "live" | "manual") => {
+    setModeOverride(mode);
+  }, []);
+
+  const preferences = useSyncExternalStore(
+    subscribeAppStorage,
+    () => getDashboardPreferences(),
+    () => defaultDashboardPreferences,
+  );
+
+  const showLiveData = preferences.showLiveData;
+  const useLiveMapPosition = showLiveData && trackerMode === "live" && Boolean(livePosition);
+  const usePersistedMapSnapshot =
+    tripRestored && progressOverride === undefined && Boolean(livePosition);
+
+  const mapYouPosition = useMemo(() => {
+    if (!trip) {
+      return null;
+    }
+    return resolveYouAreHere({
+      polyline: trip.route.polyline,
+      completedDistanceMiles,
+      livePosition: useLiveMapPosition ? livePosition : null,
+      persistedPosition: livePosition,
+      preferLivePosition: useLiveMapPosition,
+      usePersistedSnapshot: usePersistedMapSnapshot,
+    });
+  }, [
+    trip,
+    completedDistanceMiles,
+    livePosition,
+    useLiveMapPosition,
+    usePersistedMapSnapshot,
+  ]);
+
+  useEffect(() => {
+    if (!trip) {
+      return;
+    }
+    saveTripSession({
+      input: trip.input,
+      result: trip.result,
+      route: trip.route,
+      completedDistanceMiles,
+      trackerMode,
+      lastKnownPosition: mapYouPosition,
+    });
+  }, [trip, completedDistanceMiles, trackerMode, mapYouPosition]);
 
   const fuelIntelligence: FuelIntelligence | null = useMemo(() => {
     if (!trip) {
@@ -43,6 +149,57 @@ export function HomeDashboard() {
     });
   }, [trip]);
 
+  const handleNewTrip = useCallback(() => {
+    clearTripSession();
+    setSessionCleared(true);
+    setTripOverride(null);
+    setProgressOverride(undefined);
+    setModeOverride(undefined);
+    setLivePositionOverride(undefined);
+    setPlannerExpanded(true);
+  }, []);
+
+  const persistTrip = useCallback(
+    (
+      nextTrip: TripState,
+      progressMiles: number,
+      mode: "live" | "manual",
+      position: LngLat | null = null,
+    ) => {
+      saveTripSession({
+        input: nextTrip.input,
+        result: nextTrip.result,
+        route: nextTrip.route,
+        completedDistanceMiles: progressMiles,
+        trackerMode: mode,
+        lastKnownPosition: position,
+      });
+    },
+    [],
+  );
+
+  const handleLocationSample = useCallback(
+    (sample: LocationSample) => {
+      if (!showLiveData) {
+        return;
+      }
+      setLivePositionOverride({
+        lng: sample.longitude,
+        lat: sample.latitude,
+      });
+    },
+    [showLiveData],
+  );
+
+  const handleAutoProgress = useCallback(
+    (miles: number) => {
+      if (showLiveData) {
+        setProgressOverride(miles);
+      }
+    },
+    [showLiveData],
+  );
+
   return (
     <div className={ui.page}>
       <main className={`${ui.main} ${motion.pageEnter}`}>
@@ -56,6 +213,12 @@ export function HomeDashboard() {
           <p className={ui.subtitle}>Your trip at a glance</p>
         </header>
 
+        <DashboardSettings
+          hasActiveTrip={Boolean(trip)}
+          tripRestored={tripRestored}
+          onStartNewTrip={handleNewTrip}
+        />
+
         <Suspense
           fallback={
             <section className={ui.panelMuted}>
@@ -64,36 +227,76 @@ export function HomeDashboard() {
           }
         >
           <TripPlanner
+            key={trip ? "active" : "empty"}
+            initialTrip={trip?.input ?? null}
+            initialResult={trip?.result ?? null}
+            isCollapsed={Boolean(trip) && !plannerExpanded}
+            activeTripSummary={
+              trip
+                ? {
+                    startPlace: trip.input.startPlace,
+                    destinationPlace: trip.input.destinationPlace,
+                    distanceMiles: trip.route.distanceMiles,
+                  }
+                : null
+            }
+            onRequestExpand={() => setPlannerExpanded(true)}
+            onRequestCollapse={() => setPlannerExpanded(false)}
             onCalculated={(input, result, route) => {
-              setTrip({ input, result, route });
-              setCompletedDistanceMiles(0);
-              setTrackerMode("manual");
+              const nextTrip = { input, result, route };
+              setSessionCleared(false);
+              setTripOverride(nextTrip);
+              setProgressOverride(0);
+              setModeOverride("manual");
+              setPlannerExpanded(false);
+              persistTrip(nextTrip, 0, "manual");
             }}
           />
         </Suspense>
+
+        {!showLiveData && trip ? (
+          <p
+            data-testid="static-mode-banner"
+            className={`rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 ${ui.body}`}
+          >
+            Static mode — trip totals stay fixed. Turn on{" "}
+            <strong className="text-white">Live dynamic data</strong> for GPS and weather updates.
+          </p>
+        ) : null}
 
         {trip && fuelIntelligence ? (
           <>
             <LiveTripTracker
               totalDistanceMiles={trip.route.distanceMiles}
-              onAutoProgress={setCompletedDistanceMiles}
+              startPlace={trip.input.startPlace}
+              destinationPlace={trip.input.destinationPlace}
+              liveDataEnabled={showLiveData}
+              initialProgressMiles={completedDistanceMiles}
+              onAutoProgress={handleAutoProgress}
               onModeChange={setTrackerMode}
+              onLocationSample={handleLocationSample}
+            />
+            <RouteMap
+              route={trip.route}
+              completedDistanceMiles={completedDistanceMiles}
+              youPosition={mapYouPosition}
+              followTrip
             />
             <OperationalDashboard
               route={trip.route}
               fuelIntelligence={fuelIntelligence}
               completedDistanceMiles={completedDistanceMiles}
               onProgressChange={setCompletedDistanceMiles}
-              manualProgressEnabled={trackerMode === "manual"}
+              manualProgressEnabled={trackerMode === "manual" || !showLiveData}
             />
             <EnvironmentalDashboard
               tripInput={trip.input}
               route={trip.route}
               fuelIntelligence={fuelIntelligence}
               completedDistanceMiles={completedDistanceMiles}
+              liveUpdatesEnabled={showLiveData}
             />
             <RouteSummary route={trip.route} />
-            <RouteMap route={trip.route} />
             <FuelPanel intelligence={fuelIntelligence} />
             <FuelWarnings intelligence={fuelIntelligence} />
             <StopRecommendation intelligence={fuelIntelligence} />

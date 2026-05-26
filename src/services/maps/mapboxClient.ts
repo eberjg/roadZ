@@ -2,6 +2,7 @@ import type {
   MapboxDirectionsResponse,
   MapboxGeocodeResponse,
   LngLat,
+  PlaceSuggestion,
 } from "./types";
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -44,6 +45,42 @@ async function fetchWithTimeout(url: string): Promise<Response> {
 
 export function isMapboxConfigured(): boolean {
   return Boolean(getAccessToken());
+}
+
+export async function suggestPlaces(query: string, limit = 5): Promise<PlaceSuggestion[]> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new MapboxClientError("Mapbox token is not configured.", "UNAVAILABLE");
+  }
+
+  const trimmed = query.trim();
+  if (trimmed.length < 2) {
+    return [];
+  }
+
+  const encoded = encodeURIComponent(trimmed);
+  const url =
+    `${MAPBOX_BASE}/geocoding/v5/mapbox.places/${encoded}.json` +
+    `?country=US&autocomplete=true&types=address,postcode,place,locality` +
+    `&limit=${limit}&access_token=${token}`;
+
+  const response = await fetchWithTimeout(url);
+  if (!response.ok) {
+    throw new MapboxClientError(`Geocoding failed (${response.status}).`, "UNAVAILABLE");
+  }
+
+  const data = (await response.json()) as MapboxGeocodeResponse;
+  return (data.features ?? [])
+    .filter((feature) => feature.center?.length === 2)
+    .map((feature) => {
+      const [lng, lat] = feature.center;
+      return {
+        id: feature.id ?? `${lng},${lat}`,
+        label: feature.place_name ?? trimmed,
+        lng,
+        lat,
+      };
+    });
 }
 
 export async function geocodePlace(query: string): Promise<LngLat & { label: string }> {

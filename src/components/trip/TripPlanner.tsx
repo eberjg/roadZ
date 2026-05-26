@@ -10,9 +10,20 @@ import { calculateTrip } from "@/services/trip/calculateTrip";
 import { readMapHandoffFromSearch } from "@/services/trip/mapDeepLink";
 import type { RouteData } from "@/services/maps/types";
 import type { TripInput, TripResult } from "@/services/trip/types";
+import { AddressAutocomplete } from "./AddressAutocomplete";
 import { TripResults } from "./TripResults";
 
 type TripPlannerProps = {
+  initialTrip?: TripInput | null;
+  initialResult?: TripResult | null;
+  isCollapsed?: boolean;
+  activeTripSummary?: {
+    startPlace: string;
+    destinationPlace: string;
+    distanceMiles: number;
+  } | null;
+  onRequestExpand?: () => void;
+  onRequestCollapse?: () => void;
   onCalculated?: (input: TripInput, result: TripResult, route: RouteData) => void;
 };
 
@@ -34,14 +45,30 @@ function buildTripInput(
   };
 }
 
-export function TripPlanner({ onCalculated }: TripPlannerProps) {
+export function TripPlanner({
+  initialTrip,
+  initialResult,
+  isCollapsed = false,
+  activeTripSummary = null,
+  onRequestExpand,
+  onRequestCollapse,
+  onCalculated,
+}: TripPlannerProps) {
   const searchParams = useSearchParams();
   const mapHandoff = readMapHandoffFromSearch(searchParams.toString());
-  const [startPlace, setStartPlace] = useState(mapHandoff.start ?? "");
-  const [destinationPlace, setDestinationPlace] = useState(mapHandoff.destination ?? "");
-  const [vehicleMpg, setVehicleMpg] = useState("");
-  const [gasPrice, setGasPrice] = useState("");
-  const [result, setResult] = useState<TripResult | null>(null);
+  const [startPlace, setStartPlace] = useState(
+    mapHandoff.start ?? initialTrip?.startPlace ?? "",
+  );
+  const [destinationPlace, setDestinationPlace] = useState(
+    mapHandoff.destination ?? initialTrip?.destinationPlace ?? "",
+  );
+  const [vehicleMpg, setVehicleMpg] = useState(
+    initialTrip?.vehicleMpg ? String(initialTrip.vehicleMpg) : "",
+  );
+  const [gasPrice, setGasPrice] = useState(
+    initialTrip?.gasPrice ? String(initialTrip.gasPrice) : "",
+  );
+  const [result, setResult] = useState<TripResult | null>(initialResult ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -105,12 +132,48 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
     }
   }
 
+  if (isCollapsed && activeTripSummary) {
+    return (
+      <section data-testid="trip-planner-collapsed" className={ui.panel}>
+        <h2 className={ui.h2}>Trip plan</h2>
+        <p className={`mt-2 ${ui.value}`} data-testid="trip-planner-summary-route">
+          {activeTripSummary.startPlace} → {activeTripSummary.destinationPlace}
+        </p>
+        <p className={`mt-1 ${ui.body}`} data-testid="trip-planner-summary-distance">
+          {activeTripSummary.distanceMiles.toLocaleString()} miles total
+        </p>
+        <button
+          type="button"
+          data-testid="btn-expand-trip-planner"
+          onClick={onRequestExpand}
+          className={`mt-5 ${ui.btnSecondary}`}
+        >
+          Plan new trip
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section data-testid="trip-planner" className={ui.panel}>
-      <h2 className={ui.h2}>Trip Planner</h2>
-      <p className={`mt-2 ${ui.body}`}>
-        Paste from Apple Maps or Google Maps — full address or ZIP works.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className={ui.h2}>Trip Planner</h2>
+          <p className={`mt-2 ${ui.body}`}>
+            Start typing — we suggest addresses as you go. Paste from Maps works too.
+          </p>
+        </div>
+        {activeTripSummary ? (
+          <button
+            type="button"
+            data-testid="btn-collapse-trip-planner"
+            onClick={() => onRequestCollapse?.()}
+            className={ui.btnSecondary}
+          >
+            Back to trip
+          </button>
+        ) : null}
+      </div>
 
       <form
         className="mt-6 flex flex-col gap-5"
@@ -119,31 +182,21 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
           void handleCalculate();
         }}
       >
-        <label className="block">
-          <span className={ui.label}>Start</span>
-          <input
-            data-testid="input-start-zip"
-            type="text"
-            autoComplete="street-address"
-            placeholder="e.g. 123 Main St, Miami FL or 33301"
-            value={startPlace}
-            onChange={(event) => setStartPlace(event.target.value)}
-            className={ui.input}
-          />
-        </label>
+        <AddressAutocomplete
+          label="Start"
+          testId="input-start-zip"
+          placeholder="e.g. 123 Main St, Miami FL or 33301"
+          value={startPlace}
+          onValueChange={setStartPlace}
+        />
 
-        <label className="block">
-          <span className={ui.label}>Destination</span>
-          <input
-            data-testid="input-destination-zip"
-            type="text"
-            autoComplete="street-address"
-            placeholder="e.g. 1600 Broadway, Tacoma WA or 98402"
-            value={destinationPlace}
-            onChange={(event) => setDestinationPlace(event.target.value)}
-            className={ui.input}
-          />
-        </label>
+        <AddressAutocomplete
+          label="Destination"
+          testId="input-destination-zip"
+          placeholder="e.g. 1600 Broadway, Tacoma WA or 98402"
+          value={destinationPlace}
+          onValueChange={setDestinationPlace}
+        />
 
         <label className="block">
           <span className={ui.label}>Vehicle MPG</span>
@@ -187,7 +240,7 @@ export function TripPlanner({ onCalculated }: TripPlannerProps) {
         </button>
       </form>
 
-      {result ? (
+      {result && !isCollapsed ? (
         <div className="mt-8">
           <TripResults result={result} />
         </div>

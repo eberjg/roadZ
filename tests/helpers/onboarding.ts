@@ -21,5 +21,18 @@ export async function resetOnboardingState(page: Page) {
     window.localStorage.removeItem("rc_onboarding_complete");
     window.localStorage.removeItem("rc_permission_state");
     window.localStorage.removeItem("rc_dashboard_preferences");
+    window.localStorage.removeItem("rc_active_trip_session");
   });
+}
+
+/** Persist dashboard preference for live updates in tests. */
+export async function setShowLiveDataPreference(page: Page, enabled: boolean) {
+  await page.addInitScript((value) => {
+    const raw = window.localStorage.getItem("rc_dashboard_preferences");
+    const base = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    window.localStorage.setItem(
+      "rc_dashboard_preferences",
+      JSON.stringify({ ...base, showLiveData: value }),
+    );
+  }, enabled);
 }

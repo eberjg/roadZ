@@ -20,7 +20,7 @@ test.describe("Route map and live routing", () => {
 
     await expect(page.getByTestId("route-summary-distance")).toContainText("3,300");
     await expect(page.getByTestId("route-summary-eta")).toContainText("55 hr");
-    await expect(page.getByTestId("result-distance")).toContainText("3,300 miles");
+    await expect(page.getByTestId("trip-planner-summary-distance")).toContainText("3,300");
   });
 
   test("renders route map with start and destination markers area", async ({ page }) => {
@@ -30,6 +30,17 @@ test.describe("Route map and live routing", () => {
     await expect(page.getByTestId("route-map")).toBeVisible();
     await expect(page.getByTestId("route-map-start")).toBeVisible();
     await expect(page.getByTestId("route-map-end")).toBeVisible();
+    await expect(page.getByTestId("route-map-you")).toBeVisible();
+  });
+
+  test("shows you marker along route when progress moves", async ({ page }) => {
+    await page.goto("/");
+    await calculateSampleTrip(page);
+
+    const slider = page.getByTestId("trip-progress-slider");
+    await slider.fill("500");
+    await expect(page.getByTestId("route-map-position-label")).toContainText("500 mi along route");
+    await expect(page.getByTestId("route-map-you")).toBeVisible();
   });
 
   test("shows loading state while route is calculated", async ({ page }) => {

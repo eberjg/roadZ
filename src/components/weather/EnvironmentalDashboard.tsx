@@ -18,6 +18,7 @@ type EnvironmentalDashboardProps = {
   route: RouteData;
   fuelIntelligence: FuelIntelligence;
   completedDistanceMiles: number;
+  liveUpdatesEnabled?: boolean;
 };
 
 export function EnvironmentalDashboard({
@@ -25,20 +26,24 @@ export function EnvironmentalDashboard({
   route,
   fuelIntelligence,
   completedDistanceMiles,
+  liveUpdatesEnabled = true,
 }: EnvironmentalDashboardProps) {
   const [weather, setWeather] = useState<WeatherIntelligence | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snapshotMiles] = useState(completedDistanceMiles);
+
+  const milesForAnalysis = liveUpdatesEnabled ? completedDistanceMiles : snapshotMiles;
 
   const operational = useMemo(
     () =>
       buildOperationalState({
         totalDistanceMiles: route.distanceMiles,
         routeEtaLabel: route.etaLabel,
-        completedDistanceMiles,
+        completedDistanceMiles: milesForAnalysis,
         fuelIntelligence,
       }),
-    [route, completedDistanceMiles, fuelIntelligence],
+    [route, milesForAnalysis, fuelIntelligence],
   );
 
   useEffect(() => {
@@ -56,7 +61,7 @@ export function EnvironmentalDashboard({
             startZip: tripInput.startZip,
             destinationZip: tripInput.destinationZip,
             totalDistanceMiles: route.distanceMiles,
-            completedDistanceMiles,
+            completedDistanceMiles: milesForAnalysis,
             fatigueStatus: operational.fatigue.status,
             drivingSessionHours: operational.progress.drivingSessionHours,
           }),
@@ -86,10 +91,11 @@ export function EnvironmentalDashboard({
       cancelled = true;
     };
   }, [
+    liveUpdatesEnabled,
     tripInput.startZip,
     tripInput.destinationZip,
     route.distanceMiles,
-    completedDistanceMiles,
+    milesForAnalysis,
     operational.fatigue.status,
     operational.progress.drivingSessionHours,
   ]);

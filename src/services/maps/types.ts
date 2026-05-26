@@ -26,7 +26,15 @@ export type RouteRequest = {
   destination?: string;
 };
 
+export type PlaceSuggestion = {
+  id: string;
+  label: string;
+  lng: number;
+  lat: number;
+};
+
 export type MapboxGeocodeFeature = {
+  id?: string;
   center: [number, number];
   place_name: string;
 };

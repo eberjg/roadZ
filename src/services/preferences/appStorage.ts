@@ -1,5 +1,7 @@
 import type { GPSPermissionState } from "@/services/location/types";
 
+import { clearTripSession } from "./tripSessionStorage";
+
 const KEYS = {
   onboardingComplete: "rc_onboarding_complete",
   permissionState: "rc_permission_state",
@@ -9,26 +11,54 @@ const KEYS = {
 export type DashboardPreferences = {
   reducedMotion: boolean;
   immersiveLayout: boolean;
+  /** When true: live GPS, weather refresh, auto progress. When false: static trip snapshot. */
+  showLiveData: boolean;
 };
 
 export type StoredPermissionState = GPSPermissionState | "skipped";
 
-const defaultPreferences: DashboardPreferences = {
+export const defaultDashboardPreferences: DashboardPreferences = {
   reducedMotion: false,
   immersiveLayout: true,
+  showLiveData: true,
 };
 
 const STORAGE_EVENT = "rc-app-storage";
 
+let preferencesCache: DashboardPreferences | null = null;
+let preferencesCacheKey: string | null | undefined;
+
 function canUseStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function invalidatePreferencesCache(): void {
+  preferencesCache = null;
+  preferencesCacheKey = undefined;
 }
 
 function notifyStorageChange(): void {
   if (typeof window === "undefined") {
     return;
   }
+  invalidatePreferencesCache();
   window.dispatchEvent(new Event(STORAGE_EVENT));
+}
+
+function parseDashboardPreferences(raw: string | null): DashboardPreferences {
+  if (!raw) {
+    return defaultDashboardPreferences;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<DashboardPreferences>;
+    return {
+      reducedMotion: parsed.reducedMotion ?? defaultDashboardPreferences.reducedMotion,
+      immersiveLayout: parsed.immersiveLayout ?? defaultDashboardPreferences.immersiveLayout,
+      showLiveData: parsed.showLiveData ?? defaultDashboardPreferences.showLiveData,
+    };
+  } catch {
+    return defaultDashboardPreferences;
+  }
 }
 
 export function subscribeAppStorage(onStoreChange: () => void): () => void {
@@ -82,21 +112,16 @@ export function setStoredPermissionState(state: StoredPermissionState): void {
 
 export function getDashboardPreferences(): DashboardPreferences {
   if (!canUseStorage()) {
-    return defaultPreferences;
+    return defaultDashboardPreferences;
   }
-  try {
-    const raw = window.localStorage.getItem(KEYS.preferences);
-    if (!raw) {
-      return defaultPreferences;
-    }
-    const parsed = JSON.parse(raw) as Partial<DashboardPreferences>;
-    return {
-      reducedMotion: parsed.reducedMotion ?? defaultPreferences.reducedMotion,
-      immersiveLayout: parsed.immersiveLayout ?? defaultPreferences.immersiveLayout,
-    };
-  } catch {
-    return defaultPreferences;
+  const raw = window.localStorage.getItem(KEYS.preferences);
+  if (preferencesCache && preferencesCacheKey === raw) {
+    return preferencesCache;
   }
+  const next = parseDashboardPreferences(raw);
+  preferencesCache = next;
+  preferencesCacheKey = raw;
+  return next;
 }
 
 export function setDashboardPreferences(preferences: DashboardPreferences): void {
@@ -115,5 +140,14 @@ export function clearAppStorage(): void {
   window.localStorage.removeItem(KEYS.onboardingComplete);
   window.localStorage.removeItem(KEYS.permissionState);
   window.localStorage.removeItem(KEYS.preferences);
+  clearTripSession();
   notifyStorageChange();
+}
+
+export function updateDashboardPreferences(
+  patch: Partial<DashboardPreferences>,
+): DashboardPreferences {
+  const next = { ...getDashboardPreferences(), ...patch };
+  setDashboardPreferences(next);
+  return next;
 }
