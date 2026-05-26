@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { primeOnboardingComplete } from "./helpers/onboarding";
 
-test.describe("Road Companion dashboard", () => {
+test.describe("redZ dashboard", () => {
   test.beforeEach(async ({ page }) => {
     await primeOnboardingComplete(page);
   });
   test("shows title and all dashboard cards", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByTestId("dashboard-title")).toHaveText("Road Companion");
+    await expect(page.getByTestId("dashboard-title")).toHaveText("redZ");
     await expect(page.getByTestId("route-card")).toBeVisible();
     await expect(page.getByTestId("fuel-card")).toBeVisible();
     await expect(page.getByTestId("stop-card")).toBeVisible();

@@ -1,6 +1,6 @@
-# Road Companion Pilot
+# redZ
 
-AI-assisted road trip dashboard (Next.js).
+AI-assisted road trip co-pilot (Next.js).
 
 ## Git → Railway auto-deploy (use this every fix)
 

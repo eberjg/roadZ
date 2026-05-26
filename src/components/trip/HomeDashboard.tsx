@@ -48,10 +48,10 @@ export function HomeDashboard() {
       <main className={`${ui.main} ${motion.pageEnter}`}>
         <header className={motion.cardEnter}>
           <p className="text-sm font-semibold uppercase tracking-widest text-sky-400/90">
-            Road Companion Pilot
+            redZ pilot
           </p>
           <h1 data-testid="dashboard-title" className={`mt-1 ${ui.title}`}>
-            Road Companion
+            redZ
           </h1>
           <p className={ui.subtitle}>Your trip at a glance</p>
         </header>

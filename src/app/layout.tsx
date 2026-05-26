@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Road Companion",
-  description: "AI-assisted road trip dashboard",
+  title: "redZ",
+  description: "AI-assisted road trip co-pilot",
 };
 
 export const viewport: Viewport = {
