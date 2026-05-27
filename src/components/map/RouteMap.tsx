@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import {
   bearingDegrees,
+  haversineMiles,
   positionAlongPolyline,
   resolveYouAreHere,
   splitRoutePolyline,
@@ -167,6 +168,12 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
   );
 }
 
+function routeCameraKey(route: RouteData): string {
+  return `${route.start.lng.toFixed(5)},${route.start.lat.toFixed(5)}|${route.end.lng.toFixed(5)},${route.end.lat.toFixed(5)}|${route.polyline.length}|${route.distanceMiles}`;
+}
+
+const FOLLOW_CAMERA_MIN_MILES = 0.008;
+
 function MapboxMap({
   route,
   completedDistanceMiles = 0,
@@ -178,6 +185,12 @@ function MapboxMap({
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
   const youMarkerRef = useRef<import("mapbox-gl").Marker | null>(null);
   const readyRef = useRef(false);
+  const cameraStateRef = useRef({
+    routeKey: "",
+    followCenter: null as [number, number] | null,
+    progressMiles: 0,
+    pitchApplied: false,
+  });
 
   const mapView = useMemo(() => {
     const polyline = normalizedPolyline(route);
@@ -268,10 +281,21 @@ function MapboxMap({
         youEl.className =
           "h-5 w-5 rounded-sm bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)] ring-2 ring-white/80";
         youEl.style.clipPath = "polygon(50% 0%, 100% 70%, 50% 100%, 0% 70%)";
-        youMarkerRef.current = new mapboxgl.Marker({ element: youEl }).setLngLat([0, 0]).addTo(map);
+        youMarkerRef.current = new mapboxgl.Marker({
+          element: youEl,
+          rotationAlignment: "map",
+        })
+          .setLngLat([0, 0])
+          .addTo(map);
 
         readyRef.current = true;
-        applyMapView({
+        cameraStateRef.current = {
+          routeKey: "",
+          followCenter: null,
+          progressMiles: completedDistanceMiles,
+          pitchApplied: false,
+        };
+        syncMapView({
           map,
           mapboxgl,
           mapView,
@@ -280,6 +304,8 @@ function MapboxMap({
           completedDistanceMiles,
           youMarker: youMarkerRef.current,
           variant,
+          cameraState: cameraStateRef.current,
+          forceCamera: "fit-route",
         });
       });
     }
@@ -289,6 +315,12 @@ function MapboxMap({
     return () => {
       cancelled = true;
       readyRef.current = false;
+      cameraStateRef.current = {
+        routeKey: "",
+        followCenter: null,
+        progressMiles: 0,
+        pitchApplied: false,
+      };
       youMarkerRef.current?.remove();
       youMarkerRef.current = null;
       mapRef.current?.remove();
@@ -305,7 +337,20 @@ function MapboxMap({
     }
 
     void import("mapbox-gl").then((mapboxgl) => {
-      applyMapView({
+      const routeKey = routeCameraKey(route);
+      const inProgress = followTrip && completedDistanceMiles > 0;
+      const routeChanged = cameraStateRef.current.routeKey !== routeKey;
+
+      let forceCamera: "fit-route" | "follow" | "none" = "none";
+      if (routeChanged) {
+        forceCamera = "fit-route";
+      } else if (inProgress) {
+        forceCamera = "follow";
+      } else if (cameraStateRef.current.progressMiles > 0 && completedDistanceMiles === 0) {
+        forceCamera = "fit-route";
+      }
+
+      syncMapView({
         map,
         mapboxgl: mapboxgl.default,
         mapView,
@@ -314,6 +359,8 @@ function MapboxMap({
         completedDistanceMiles,
         youMarker: youMarkerRef.current,
         variant,
+        cameraState: cameraStateRef.current,
+        forceCamera,
       });
     });
   }, [mapView, route, followTrip, completedDistanceMiles, variant]);
@@ -360,7 +407,7 @@ function maxZoomForRoute(
   return 8;
 }
 
-function applyMapView(input: {
+function syncMapView(input: {
   map: import("mapbox-gl").Map;
   mapboxgl: typeof import("mapbox-gl").default;
   mapView: {
@@ -374,24 +421,74 @@ function applyMapView(input: {
   completedDistanceMiles: number;
   youMarker: import("mapbox-gl").Marker | null;
   variant?: RouteMapProps["variant"];
+  cameraState: {
+    routeKey: string;
+    followCenter: [number, number] | null;
+    progressMiles: number;
+    pitchApplied: boolean;
+  };
+  forceCamera: "fit-route" | "follow" | "none";
 }) {
-  const traveledSource = input.map.getSource("route-traveled") as
+  updateRouteLayers(input.map, input.mapView, input.youMarker);
+
+  const routeKey = routeCameraKey(input.route);
+  input.cameraState.routeKey = routeKey;
+  input.cameraState.progressMiles = input.completedDistanceMiles;
+
+  if (input.forceCamera === "fit-route") {
+    fitRouteCamera(input);
+    input.cameraState.followCenter = [input.mapView.you.lng, input.mapView.you.lat];
+    return;
+  }
+
+  if (input.forceCamera === "follow") {
+    followVehicleCamera(input);
+  }
+}
+
+function updateRouteLayers(
+  map: import("mapbox-gl").Map,
+  mapView: {
+    traveled: [number, number][];
+    remaining: [number, number][];
+    you: LngLat;
+    bearing: number;
+  },
+  youMarker: import("mapbox-gl").Marker | null,
+) {
+  const traveledSource = map.getSource("route-traveled") as
     | import("mapbox-gl").GeoJSONSource
     | undefined;
-  const remainingSource = input.map.getSource("route-remaining") as
+  const remainingSource = map.getSource("route-remaining") as
     | import("mapbox-gl").GeoJSONSource
     | undefined;
 
-  traveledSource?.setData(lineFeature(input.mapView.traveled));
-  remainingSource?.setData(lineFeature(input.mapView.remaining));
+  traveledSource?.setData(lineFeature(mapView.traveled));
+  remainingSource?.setData(lineFeature(mapView.remaining));
 
+  youMarker?.setLngLat([mapView.you.lng, mapView.you.lat]).setRotation(mapView.bearing);
+}
+
+function fitRouteCamera(input: {
+  map: import("mapbox-gl").Map;
+  mapboxgl: typeof import("mapbox-gl").default;
+  mapView: { you: LngLat };
+  route: RouteData;
+  followTrip: boolean;
+  completedDistanceMiles: number;
+  variant?: RouteMapProps["variant"];
+  cameraState: { pitchApplied: boolean };
+}) {
   const bounds = new input.mapboxgl.LngLatBounds();
+  const polyline = normalizedPolyline(input.route);
   if (input.followTrip && input.completedDistanceMiles > 0) {
     bounds.extend([input.mapView.you.lng, input.mapView.you.lat]);
     bounds.extend([input.route.end.lng, input.route.end.lat]);
-    input.mapView.remaining.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+    splitRoutePolyline(polyline, input.completedDistanceMiles).remaining.forEach(([lng, lat]) =>
+      bounds.extend([lng, lat]),
+    );
   } else {
-    input.route.polyline.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+    polyline.forEach(([lng, lat]) => bounds.extend([lng, lat]));
     bounds.extend([input.mapView.you.lng, input.mapView.you.lat]);
   }
 
@@ -401,34 +498,57 @@ function applyMapView(input: {
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
   const degenerate = Math.abs(sw.lng - ne.lng) < 0.0001 && Math.abs(sw.lat - ne.lat) < 0.0001;
+
   if (degenerate) {
     input.map.easeTo({
       center: [input.mapView.you.lng, input.mapView.you.lat],
       zoom: Math.min(maxZoom, 15),
-      duration: 500,
+      duration: 0,
       essential: true,
     });
   } else {
     input.map.fitBounds(bounds, {
       padding,
       maxZoom,
-      duration: 700,
+      duration: 0,
       essential: true,
     });
   }
 
-  if (input.variant === "cockpit" && !inProgress) {
-    input.map.easeTo({ pitch: 48, bearing: 0, duration: 700 });
-  } else if (input.variant === "cockpit" && inProgress) {
-    input.map.easeTo({ pitch: 55, duration: 500 });
+  if (input.variant === "cockpit" && !input.cameraState.pitchApplied) {
+    input.map.easeTo({
+      pitch: inProgress ? 55 : 48,
+      bearing: 0,
+      duration: 0,
+      essential: true,
+    });
+    input.cameraState.pitchApplied = true;
+  }
+}
+
+function followVehicleCamera(input: {
+  map: import("mapbox-gl").Map;
+  mapView: { you: LngLat };
+  variant?: RouteMapProps["variant"];
+  cameraState: { followCenter: [number, number] | null };
+}) {
+  const center: [number, number] = [input.mapView.you.lng, input.mapView.you.lat];
+  const lastCenter = input.cameraState.followCenter;
+  if (
+    lastCenter &&
+    haversineMiles(lastCenter, center) < FOLLOW_CAMERA_MIN_MILES
+  ) {
+    return;
   }
 
-  input.youMarker?.setLngLat([input.mapView.you.lng, input.mapView.you.lat]);
-  const markerEl = input.youMarker?.getElement();
-  if (markerEl) {
-    markerEl.style.transform = `rotate(${input.mapView.bearing}deg)`;
-    markerEl.style.transformOrigin = "50% 50%";
-  }
+  input.cameraState.followCenter = center;
+  const zoom = input.map.getZoom();
+  input.map.easeTo({
+    center,
+    zoom: Number.isFinite(zoom) ? zoom : undefined,
+    duration: 450,
+    essential: true,
+  });
 }
 
 export function RouteMap(props: RouteMapProps) {
