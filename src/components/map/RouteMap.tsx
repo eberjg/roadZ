@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import {
-  bearingDegrees,
   haversineMiles,
   positionAlongPolyline,
   resolveYouAreHere,
