@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import {
+  bearingDegrees,
+  positionAlongPolyline,
   resolveYouAreHere,
   splitRoutePolyline,
 } from "@/services/maps/routeProgress";
@@ -60,6 +62,10 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
       completedDistanceMiles,
     });
   }, [polyline, completedDistanceMiles, youPosition]);
+  const youBearing = useMemo(() => {
+    const along = positionAlongPolyline(polyline, completedDistanceMiles);
+    return along.bearing;
+  }, [polyline, completedDistanceMiles]);
 
   const allPoints = useMemo(() => {
     const points = [...route.polyline, [you.lng, you.lat] as [number, number]];
@@ -152,6 +158,11 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
         stroke="#ffffff"
         strokeWidth="2"
       />
+      <polygon
+        points={`${youX},${Number(youY) - 12} ${Number(youX) - 5},${Number(youY) - 2} ${Number(youX) + 5},${Number(youY) - 2}`}
+        fill="#ffffff"
+        transform={`rotate(${youBearing}, ${youX}, ${youY})`}
+      />
     </svg>
   );
 }
@@ -171,13 +182,14 @@ function MapboxMap({
   const mapView = useMemo(() => {
     const polyline = normalizedPolyline(route);
     const { traveled, remaining } = splitRoutePolyline(polyline, completedDistanceMiles);
+    const along = positionAlongPolyline(polyline, completedDistanceMiles);
     const you =
       youPosition ??
       resolveYouAreHere({
         polyline,
         completedDistanceMiles,
       });
-    return { traveled, remaining, you };
+    return { traveled, remaining, you, bearing: along.bearing };
   }, [route, completedDistanceMiles, youPosition]);
 
   useEffect(() => {
@@ -254,7 +266,8 @@ function MapboxMap({
         const youEl = document.createElement("div");
         youEl.setAttribute("data-testid", "route-map-you");
         youEl.className =
-          "h-5 w-5 rotate-45 rounded-sm bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)] ring-2 ring-white/80";
+          "h-5 w-5 rounded-sm bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)] ring-2 ring-white/80";
+        youEl.style.clipPath = "polygon(50% 0%, 100% 70%, 50% 100%, 0% 70%)";
         youMarkerRef.current = new mapboxgl.Marker({ element: youEl }).setLngLat([0, 0]).addTo(map);
 
         readyRef.current = true;
@@ -354,6 +367,7 @@ function applyMapView(input: {
     traveled: [number, number][];
     remaining: [number, number][];
     you: LngLat;
+    bearing: number;
   };
   route: RouteData;
   followTrip: boolean;
@@ -384,13 +398,24 @@ function applyMapView(input: {
   const inProgress = input.followTrip && input.completedDistanceMiles > 0;
   const padding = mapPadding(input.variant);
   const maxZoom = maxZoomForRoute(input.route.distanceMiles, input.variant, inProgress);
-
-  input.map.fitBounds(bounds, {
-    padding,
-    maxZoom,
-    duration: 700,
-    essential: true,
-  });
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const degenerate = Math.abs(sw.lng - ne.lng) < 0.0001 && Math.abs(sw.lat - ne.lat) < 0.0001;
+  if (degenerate) {
+    input.map.easeTo({
+      center: [input.mapView.you.lng, input.mapView.you.lat],
+      zoom: Math.min(maxZoom, 15),
+      duration: 500,
+      essential: true,
+    });
+  } else {
+    input.map.fitBounds(bounds, {
+      padding,
+      maxZoom,
+      duration: 700,
+      essential: true,
+    });
+  }
 
   if (input.variant === "cockpit" && !inProgress) {
     input.map.easeTo({ pitch: 48, bearing: 0, duration: 700 });
@@ -399,6 +424,11 @@ function applyMapView(input: {
   }
 
   input.youMarker?.setLngLat([input.mapView.you.lng, input.mapView.you.lat]);
+  const markerEl = input.youMarker?.getElement();
+  if (markerEl) {
+    markerEl.style.transform = `rotate(${input.mapView.bearing}deg)`;
+    markerEl.style.transformOrigin = "50% 50%";
+  }
 }
 
 export function RouteMap(props: RouteMapProps) {
