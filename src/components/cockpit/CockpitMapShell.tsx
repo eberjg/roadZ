@@ -154,14 +154,16 @@ export function CockpitMapShell({
               />
             </div>
           ) : null}
-          <div className="absolute bottom-24 right-2 z-20 sm:bottom-28">
-            <MapControls
-              onRecenter={onMapRecenter}
-              onResetNorth={onMapResetNorth}
-              onZoomIn={onMapZoomIn}
-              onZoomOut={onMapZoomOut}
-            />
-          </div>
+        </div>
+
+        {/* Map controls sit above overlays so taps reach buttons on mobile Safari */}
+        <div className="absolute bottom-24 right-2 z-30 sm:bottom-28">
+          <MapControls
+            onRecenter={onMapRecenter}
+            onResetNorth={onMapResetNorth}
+            onZoomIn={onMapZoomIn}
+            onZoomOut={onMapZoomOut}
+          />
         </div>
       </div>
 

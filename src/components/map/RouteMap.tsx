@@ -305,10 +305,20 @@ const MapboxMap = forwardRef<RouteMapHandle, RouteMapProps>(function MapboxMap(
         });
       },
       zoomIn: () => {
-        mapRef.current?.zoomIn({ duration: 200 });
+        const map = mapRef.current;
+        if (!map) {
+          return;
+        }
+        map.resize();
+        map.zoomIn({ duration: 200 });
       },
       zoomOut: () => {
-        mapRef.current?.zoomOut({ duration: 200 });
+        const map = mapRef.current;
+        if (!map) {
+          return;
+        }
+        map.resize();
+        map.zoomOut({ duration: 200 });
       },
       resetNorth: () => {
         const inProgress =
@@ -353,7 +363,7 @@ const MapboxMap = forwardRef<RouteMapHandle, RouteMapProps>(function MapboxMap(
         style: "mapbox://styles/mapbox/navigation-night-v1",
         interactive: true,
         center: [initialYou.lng, initialYou.lat],
-        zoom: 8,
+        zoom: targetZoomForRoute(route.distanceMiles, variant, completedDistanceMiles > 0),
       });
       mapRef.current = map;
 
@@ -530,14 +540,56 @@ const MapboxMap = forwardRef<RouteMapHandle, RouteMapProps>(function MapboxMap(
   return <div ref={containerRef} className="h-full w-full touch-manipulation" />;
 });
 
-function mapPadding(variant: RouteMapProps["variant"]) {
+function mapPadding(variant: RouteMapProps["variant"], distanceMiles: number) {
   if (variant === "cockpit") {
+    if (distanceMiles < 3) {
+      return { top: 100, bottom: 190, left: 40, right: 80 };
+    }
+    if (distanceMiles < 15) {
+      return { top: 120, bottom: 210, left: 48, right: 68 };
+    }
     return { top: 150, bottom: 230, left: 56, right: 56 };
   }
   if (variant === "immersive") {
+    if (distanceMiles < 5) {
+      return { top: 64, bottom: 96, left: 40, right: 56 };
+    }
     return { top: 80, bottom: 120, left: 48, right: 48 };
   }
   return 48;
+}
+
+/** Street-level zoom for short trips — fitBounds alone zooms out too far on mobile. */
+function targetZoomForRoute(
+  distanceMiles: number,
+  variant: RouteMapProps["variant"],
+  inProgress: boolean,
+): number {
+  if (inProgress) {
+    return variant === "cockpit" ? 13.5 : 12;
+  }
+  if (variant === "cockpit" || variant === "immersive") {
+    if (distanceMiles < 1) {
+      return 15;
+    }
+    if (distanceMiles < 3) {
+      return 14.5;
+    }
+    if (distanceMiles < 8) {
+      return 14;
+    }
+    if (distanceMiles < 20) {
+      return 13;
+    }
+    if (distanceMiles < 80) {
+      return 11.5;
+    }
+    return 9.5;
+  }
+  if (distanceMiles < 20) {
+    return 12;
+  }
+  return 9;
 }
 
 function maxZoomForRoute(
@@ -545,28 +597,11 @@ function maxZoomForRoute(
   variant: RouteMapProps["variant"],
   inProgress: boolean,
 ) {
-  if (inProgress) {
-    return variant === "cockpit" ? 12.5 : 11;
-  }
-  if (variant === "cockpit") {
-    if (distanceMiles < 20) {
-      return 14;
-    }
-    if (distanceMiles < 80) {
-      return 12;
-    }
-    if (distanceMiles < 300) {
-      return 10;
-    }
-    return 8.5;
-  }
-  if (variant === "immersive") {
-    if (distanceMiles < 50) {
-      return 11;
-    }
-    return 8;
-  }
-  return 8;
+  return Math.max(targetZoomForRoute(distanceMiles, variant, inProgress), 8);
+}
+
+function shouldUseDirectRouteZoom(distanceMiles: number): boolean {
+  return distanceMiles < 10;
 }
 
 function syncMapView(input: {
@@ -654,16 +689,19 @@ function fitRouteCamera(input: {
   );
 
   const inProgress = input.followTrip && input.completedDistanceMiles > 0;
-  const padding = mapPadding(input.variant);
-  const maxZoom = maxZoomForRoute(input.route.distanceMiles, input.variant, inProgress);
+  const distanceMiles = input.route.distanceMiles;
+  const padding = mapPadding(input.variant, distanceMiles);
+  const maxZoom = maxZoomForRoute(distanceMiles, input.variant, inProgress);
+  const targetZoom = targetZoomForRoute(distanceMiles, input.variant, inProgress);
+  const center = bounds.getCenter();
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
   const degenerate = Math.abs(sw.lng - ne.lng) < 0.0001 && Math.abs(sw.lat - ne.lat) < 0.0001;
 
-  if (degenerate) {
+  if (degenerate || shouldUseDirectRouteZoom(distanceMiles)) {
     input.map.easeTo({
-      center: [input.mapView.you.lng, input.mapView.you.lat],
-      zoom: Math.min(maxZoom, 15),
+      center: [center.lng, center.lat],
+      zoom: targetZoom,
       duration: 0,
       essential: true,
     });
@@ -674,6 +712,14 @@ function fitRouteCamera(input: {
       duration: 0,
       essential: true,
     });
+    if (input.map.getZoom() < targetZoom - 0.25) {
+      input.map.easeTo({
+        center: [center.lng, center.lat],
+        zoom: targetZoom,
+        duration: 0,
+        essential: true,
+      });
+    }
   }
 
   if (input.variant === "cockpit" && !input.cameraState.pitchApplied) {

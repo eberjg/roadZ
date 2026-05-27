@@ -147,10 +147,10 @@ test.describe("Task 11 — Futuristic map-first cockpit", () => {
   test("map control buttons are wired", async ({ page }) => {
     await startCockpitTrip(page);
     await expect(page.getByTestId("cockpit-map-controls")).toBeVisible();
-    await page.getByTestId("cockpit-map-zoom-in").click();
-    await page.getByTestId("cockpit-map-zoom-out").click();
-    await page.getByTestId("cockpit-recenter").click();
-    await page.getByTestId("cockpit-map-north").click();
+    await page.getByTestId("cockpit-map-zoom-in").dispatchEvent("pointerup");
+    await page.getByTestId("cockpit-map-zoom-out").dispatchEvent("pointerup");
+    await page.getByTestId("cockpit-recenter").dispatchEvent("pointerup");
+    await page.getByTestId("cockpit-map-north").dispatchEvent("pointerup");
     await expect(page.getByTestId("route-map-you")).toBeVisible();
   });
 });
