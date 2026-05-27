@@ -143,4 +143,14 @@ test.describe("Task 11 — Futuristic map-first cockpit", () => {
     await expect(page.getByTestId("dashboard-title")).toHaveText("roadZ");
     await expect(page.getByTestId("trip-planner")).toBeVisible();
   });
+
+  test("map control buttons are wired", async ({ page }) => {
+    await startCockpitTrip(page);
+    await expect(page.getByTestId("cockpit-map-controls")).toBeVisible();
+    await page.getByTestId("cockpit-map-zoom-in").click();
+    await page.getByTestId("cockpit-map-zoom-out").click();
+    await page.getByTestId("cockpit-recenter").click();
+    await page.getByTestId("cockpit-map-north").click();
+    await expect(page.getByTestId("route-map-you")).toBeVisible();
+  });
 });

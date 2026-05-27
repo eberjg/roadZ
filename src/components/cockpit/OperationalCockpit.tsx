@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CockpitMapShell } from "./CockpitMapShell";
 import { FuelPanel } from "@/components/fuel/FuelPanel";
 import { FuelWarnings } from "@/components/fuel/FuelWarnings";
@@ -11,7 +11,7 @@ import { useTripLocationTracking } from "@/hooks/useTripLocationTracking";
 import { formatDurationLabel } from "@/services/location/sessionEngine";
 import { OperationalDashboard } from "@/components/operations/OperationalDashboard";
 import { EnvironmentalDashboard } from "@/components/weather/EnvironmentalDashboard";
-import { RouteMap } from "@/components/map/RouteMap";
+import { RouteMap, type RouteMapHandle } from "@/components/map/RouteMap";
 import { DriverCopilotBanner } from "@/components/trip/DriverCopilotBanner";
 import { FamilySafetyPanel } from "@/components/safety/FamilySafetyPanel";
 import { useSafetyRelay } from "@/components/safety/useSafetyRelay";
@@ -66,6 +66,7 @@ export function OperationalCockpit({
   onOpenPlanner,
 }: OperationalCockpitProps) {
   const [weather, setWeather] = useState<WeatherIntelligence | null>(null);
+  const routeMapRef = useRef<RouteMapHandle>(null);
   const vehicleProfile = useMemo(() => getVehicleProfile(), []);
 
   const locationTracking = useTripLocationTracking({
@@ -325,8 +326,13 @@ export function OperationalCockpit({
       showLiveData={showLiveData}
       onStartNewTrip={onStartNewTrip}
       onOpenPlanner={onOpenPlanner}
+      onMapRecenter={() => routeMapRef.current?.recenterRoute()}
+      onMapResetNorth={() => routeMapRef.current?.resetNorth()}
+      onMapZoomIn={() => routeMapRef.current?.zoomIn()}
+      onMapZoomOut={() => routeMapRef.current?.zoomOut()}
       map={
         <RouteMap
+          ref={routeMapRef}
           variant="cockpit"
           route={trip.route}
           completedDistanceMiles={completedDistanceMiles}

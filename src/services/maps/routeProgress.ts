@@ -113,6 +113,23 @@ export function splitRoutePolyline(
   return { traveled, remaining: [polyline[polyline.length - 1]] };
 }
 
+export function isValidMapCoordinate(lng: number, lat: number): boolean {
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+    return false;
+  }
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    return false;
+  }
+  if (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01) {
+    return false;
+  }
+  return true;
+}
+
+export function isValidLngLat(position: LngLat | null | undefined): position is LngLat {
+  return Boolean(position && isValidMapCoordinate(position.lng, position.lat));
+}
+
 export function resolveYouAreHere(input: {
   polyline: LngLatPair[];
   completedDistanceMiles: number;
@@ -122,10 +139,10 @@ export function resolveYouAreHere(input: {
   /** True when reopening a saved trip before the user changes progress */
   usePersistedSnapshot?: boolean;
 }): LngLat {
-  if (input.preferLivePosition && input.livePosition) {
+  if (input.preferLivePosition && isValidLngLat(input.livePosition)) {
     return input.livePosition;
   }
-  if (input.usePersistedSnapshot && input.persistedPosition) {
+  if (input.usePersistedSnapshot && isValidLngLat(input.persistedPosition)) {
     return input.persistedPosition;
   }
   const along = positionAlongPolyline(input.polyline, input.completedDistanceMiles);

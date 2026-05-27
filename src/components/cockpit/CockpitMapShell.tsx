@@ -48,6 +48,10 @@ type CockpitMapShellProps = {
   showLiveData?: boolean;
   onStartNewTrip?: () => void;
   onOpenPlanner?: () => void;
+  onMapRecenter?: () => void;
+  onMapResetNorth?: () => void;
+  onMapZoomIn?: () => void;
+  onMapZoomOut?: () => void;
   missionPanel: ReactNode;
   fuelPanel: ReactNode;
   opsPanel: ReactNode;
@@ -62,6 +66,10 @@ export function CockpitMapShell({
   showLiveData = true,
   onStartNewTrip,
   onOpenPlanner,
+  onMapRecenter,
+  onMapResetNorth,
+  onMapZoomIn,
+  onMapZoomOut,
   missionPanel,
   fuelPanel,
   opsPanel,
@@ -147,7 +155,12 @@ export function CockpitMapShell({
             </div>
           ) : null}
           <div className="absolute bottom-24 right-2 z-20 sm:bottom-28">
-            <MapControls />
+            <MapControls
+              onRecenter={onMapRecenter}
+              onResetNorth={onMapResetNorth}
+              onZoomIn={onMapZoomIn}
+              onZoomOut={onMapZoomOut}
+            />
           </div>
         </div>
       </div>

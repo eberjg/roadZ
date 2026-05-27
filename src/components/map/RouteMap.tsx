@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import {
   haversineMiles,
+  isValidLngLat,
   positionAlongPolyline,
   resolveYouAreHere,
   splitRoutePolyline,
@@ -18,6 +19,53 @@ type RouteMapProps = {
   /** Immersive/cockpit fills parent — used in map-first cockpit */
   variant?: "default" | "immersive" | "cockpit";
 };
+
+export type RouteMapHandle = {
+  recenterRoute: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetNorth: () => void;
+};
+
+function displayYouOnMap(
+  you: LngLat,
+  route: RouteData,
+  polyline: [number, number][],
+  completedDistanceMiles: number,
+): LngLat {
+  if (isValidLngLat(you)) {
+    return you;
+  }
+  const along = positionAlongPolyline(polyline, completedDistanceMiles);
+  if (isValidLngLat({ lng: along.position[0], lat: along.position[1] })) {
+    return { lng: along.position[0], lat: along.position[1] };
+  }
+  return { lng: route.start.lng, lat: route.start.lat };
+}
+
+function extendRouteBounds(
+  bounds: import("mapbox-gl").LngLatBounds,
+  route: RouteData,
+  polyline: [number, number][],
+  followTrip: boolean,
+  completedDistanceMiles: number,
+  you: LngLat,
+): void {
+  const inProgress = followTrip && completedDistanceMiles > 0;
+  if (inProgress) {
+    splitRoutePolyline(polyline, completedDistanceMiles).remaining.forEach(([lng, lat]) =>
+      bounds.extend([lng, lat]),
+    );
+    bounds.extend([route.end.lng, route.end.lat]);
+    if (isValidLngLat(you)) {
+      bounds.extend([you.lng, you.lat]);
+    }
+    return;
+  }
+  polyline.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+  bounds.extend([route.start.lng, route.start.lat]);
+  bounds.extend([route.end.lng, route.end.lat]);
+}
 
 function lineFeature(coordinates: [number, number][]) {
   return {
@@ -173,17 +221,34 @@ function routeCameraKey(route: RouteData): string {
 
 const FOLLOW_CAMERA_MIN_MILES = 0.008;
 
-function MapboxMap({
-  route,
-  completedDistanceMiles = 0,
-  youPosition = null,
-  followTrip = true,
-  variant = "immersive",
-}: RouteMapProps) {
+const MapboxMap = forwardRef<RouteMapHandle, RouteMapProps>(function MapboxMap(
+  {
+    route,
+    completedDistanceMiles = 0,
+    youPosition = null,
+    followTrip = true,
+    variant = "immersive",
+  },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
   const youMarkerRef = useRef<import("mapbox-gl").Marker | null>(null);
   const readyRef = useRef(false);
+  const mapboxglRef = useRef<typeof import("mapbox-gl").default | null>(null);
+  const latestViewRef = useRef<{
+    mapView: {
+      traveled: [number, number][];
+      remaining: [number, number][];
+      you: LngLat;
+      bearing: number;
+      polyline: [number, number][];
+    };
+    route: RouteData;
+    followTrip: boolean;
+    completedDistanceMiles: number;
+    variant: RouteMapProps["variant"];
+  } | null>(null);
   const cameraStateRef = useRef({
     routeKey: "",
     followCenter: null as [number, number] | null,
@@ -195,14 +260,70 @@ function MapboxMap({
     const polyline = normalizedPolyline(route);
     const { traveled, remaining } = splitRoutePolyline(polyline, completedDistanceMiles);
     const along = positionAlongPolyline(polyline, completedDistanceMiles);
-    const you =
+    const rawYou =
       youPosition ??
       resolveYouAreHere({
         polyline,
         completedDistanceMiles,
       });
-    return { traveled, remaining, you, bearing: along.bearing };
+    const you = displayYouOnMap(rawYou, route, polyline, completedDistanceMiles);
+    return { traveled, remaining, you, bearing: along.bearing, polyline };
   }, [route, completedDistanceMiles, youPosition]);
+
+  useEffect(() => {
+    latestViewRef.current = {
+      mapView,
+      route,
+      followTrip,
+      completedDistanceMiles,
+      variant,
+    };
+  }, [mapView, route, followTrip, completedDistanceMiles, variant]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      recenterRoute: () => {
+        const map = mapRef.current;
+        const mapboxgl = mapboxglRef.current;
+        const latest = latestViewRef.current;
+        if (!map || !mapboxgl || !latest) {
+          return;
+        }
+        map.resize();
+        syncMapView({
+          map,
+          mapboxgl,
+          mapView: latest.mapView,
+          route: latest.route,
+          followTrip: latest.followTrip,
+          completedDistanceMiles: latest.completedDistanceMiles,
+          youMarker: youMarkerRef.current,
+          variant: latest.variant,
+          cameraState: cameraStateRef.current,
+          forceCamera: "fit-route",
+        });
+      },
+      zoomIn: () => {
+        mapRef.current?.zoomIn({ duration: 200 });
+      },
+      zoomOut: () => {
+        mapRef.current?.zoomOut({ duration: 200 });
+      },
+      resetNorth: () => {
+        const inProgress =
+          Boolean(latestViewRef.current?.followTrip) &&
+          (latestViewRef.current?.completedDistanceMiles ?? 0) > 0;
+        mapRef.current?.easeTo({
+          bearing: 0,
+          pitch: latestViewRef.current?.variant === "cockpit" ? (inProgress ? 55 : 48) : 0,
+          duration: 300,
+          essential: true,
+        });
+      },
+    }),
+    [],
+  );
 
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim();
@@ -219,10 +340,20 @@ function MapboxMap({
       }
 
       mapboxgl.accessToken = token;
+      mapboxglRef.current = mapboxgl;
+      const initialPolyline = normalizedPolyline(route);
+      const initialYou = displayYouOnMap(
+        mapView.you,
+        route,
+        initialPolyline,
+        completedDistanceMiles,
+      );
       const map = new mapboxgl.Map({
         container: containerRef.current,
         style: "mapbox://styles/mapbox/navigation-night-v1",
         interactive: true,
+        center: [initialYou.lng, initialYou.lat],
+        zoom: 8,
       });
       mapRef.current = map;
 
@@ -284,7 +415,7 @@ function MapboxMap({
           element: youEl,
           rotationAlignment: "map",
         })
-          .setLngLat([0, 0])
+          .setLngLat([route.start.lng, route.start.lat])
           .addTo(map);
 
         readyRef.current = true;
@@ -294,6 +425,7 @@ function MapboxMap({
           progressMiles: completedDistanceMiles,
           pitchApplied: false,
         };
+        map.resize();
         syncMapView({
           map,
           mapboxgl,
@@ -306,6 +438,23 @@ function MapboxMap({
           cameraState: cameraStateRef.current,
           forceCamera: "fit-route",
         });
+        window.requestAnimationFrame(() => {
+          if (!cancelled && mapRef.current) {
+            mapRef.current.resize();
+            syncMapView({
+              map,
+              mapboxgl,
+              mapView,
+              route,
+              followTrip,
+              completedDistanceMiles,
+              youMarker: youMarkerRef.current,
+              variant,
+              cameraState: cameraStateRef.current,
+              forceCamera: "fit-route",
+            });
+          }
+        });
       });
     }
 
@@ -313,6 +462,7 @@ function MapboxMap({
 
     return () => {
       cancelled = true;
+      mapboxglRef.current = null;
       readyRef.current = false;
       cameraStateRef.current = {
         routeKey: "",
@@ -364,8 +514,21 @@ function MapboxMap({
     });
   }, [mapView, route, followTrip, completedDistanceMiles, variant]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
-}
+  useEffect(() => {
+    const container = containerRef.current;
+    const map = mapRef.current;
+    if (!container || !map) {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      map.resize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [route]);
+
+  return <div ref={containerRef} className="h-full w-full touch-manipulation" />;
+});
 
 function mapPadding(variant: RouteMapProps["variant"]) {
   if (variant === "cockpit") {
@@ -414,6 +577,7 @@ function syncMapView(input: {
     remaining: [number, number][];
     you: LngLat;
     bearing: number;
+    polyline?: [number, number][];
   };
   route: RouteData;
   followTrip: boolean;
@@ -471,7 +635,7 @@ function updateRouteLayers(
 function fitRouteCamera(input: {
   map: import("mapbox-gl").Map;
   mapboxgl: typeof import("mapbox-gl").default;
-  mapView: { you: LngLat };
+  mapView: { you: LngLat; polyline?: [number, number][] };
   route: RouteData;
   followTrip: boolean;
   completedDistanceMiles: number;
@@ -479,17 +643,15 @@ function fitRouteCamera(input: {
   cameraState: { pitchApplied: boolean };
 }) {
   const bounds = new input.mapboxgl.LngLatBounds();
-  const polyline = normalizedPolyline(input.route);
-  if (input.followTrip && input.completedDistanceMiles > 0) {
-    bounds.extend([input.mapView.you.lng, input.mapView.you.lat]);
-    bounds.extend([input.route.end.lng, input.route.end.lat]);
-    splitRoutePolyline(polyline, input.completedDistanceMiles).remaining.forEach(([lng, lat]) =>
-      bounds.extend([lng, lat]),
-    );
-  } else {
-    polyline.forEach(([lng, lat]) => bounds.extend([lng, lat]));
-    bounds.extend([input.mapView.you.lng, input.mapView.you.lat]);
-  }
+  const polyline = input.mapView.polyline ?? normalizedPolyline(input.route);
+  extendRouteBounds(
+    bounds,
+    input.route,
+    polyline,
+    input.followTrip,
+    input.completedDistanceMiles,
+    input.mapView.you,
+  );
 
   const inProgress = input.followTrip && input.completedDistanceMiles > 0;
   const padding = mapPadding(input.variant);
@@ -531,6 +693,9 @@ function followVehicleCamera(input: {
   variant?: RouteMapProps["variant"];
   cameraState: { followCenter: [number, number] | null };
 }) {
+  if (!isValidLngLat(input.mapView.you)) {
+    return;
+  }
   const center: [number, number] = [input.mapView.you.lng, input.mapView.you.lat];
   const lastCenter = input.cameraState.followCenter;
   if (
@@ -550,15 +715,20 @@ function followVehicleCamera(input: {
   });
 }
 
-export function RouteMap(props: RouteMapProps) {
+export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function RouteMap(
+  props,
+  ref,
+) {
   const hasMapboxToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim());
   const immersive = props.variant === "immersive" || props.variant === "cockpit";
-  const you =
+  const polyline = normalizedPolyline(props.route);
+  const rawYou =
     props.youPosition ??
     resolveYouAreHere({
-      polyline: normalizedPolyline(props.route),
+      polyline,
       completedDistanceMiles: props.completedDistanceMiles ?? 0,
     });
+  const you = displayYouOnMap(rawYou, props.route, polyline, props.completedDistanceMiles ?? 0);
 
   if (immersive) {
     return (
@@ -580,7 +750,7 @@ export function RouteMap(props: RouteMapProps) {
           Destination
         </span>
         <div className="h-full w-full">
-          {hasMapboxToken ? <MapboxMap {...props} /> : <SvgFallbackMap {...props} />}
+          {hasMapboxToken ? <MapboxMap ref={ref} {...props} /> : <SvgFallbackMap {...props} />}
         </div>
       </section>
     );
@@ -606,7 +776,7 @@ export function RouteMap(props: RouteMapProps) {
         </p>
       </div>
       <div className="h-56 w-full sm:h-72">
-        {hasMapboxToken ? <MapboxMap {...props} /> : <SvgFallbackMap {...props} />}
+        {hasMapboxToken ? <MapboxMap ref={ref} {...props} /> : <SvgFallbackMap {...props} />}
       </div>
       <div className="flex justify-between px-4 py-3 text-sm font-semibold text-zinc-400">
         <span data-testid="route-map-start">A · Start</span>
@@ -615,4 +785,4 @@ export function RouteMap(props: RouteMapProps) {
       </div>
     </section>
   );
-}
+});
