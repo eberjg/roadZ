@@ -28,6 +28,16 @@ function lineFeature(coordinates: [number, number][]) {
   };
 }
 
+function normalizedPolyline(route: RouteData): [number, number][] {
+  if (route.polyline.length >= 2) {
+    return route.polyline;
+  }
+  return [
+    [route.start.lng, route.start.lat],
+    [route.end.lng, route.end.lat],
+  ];
+}
+
 function SvgFallbackMap(routeMap: RouteMapProps) {
   const {
     route,
@@ -35,9 +45,10 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
     youPosition = null,
     followTrip = true,
   } = routeMap;
+  const polyline = useMemo(() => normalizedPolyline(route), [route]);
   const { traveled, remaining } = useMemo(
-    () => splitRoutePolyline(route.polyline, completedDistanceMiles),
-    [route.polyline, completedDistanceMiles],
+    () => splitRoutePolyline(polyline, completedDistanceMiles),
+    [polyline, completedDistanceMiles],
   );
 
   const you = useMemo(() => {
@@ -45,10 +56,10 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
       return youPosition;
     }
     return resolveYouAreHere({
-      polyline: route.polyline,
+      polyline,
       completedDistanceMiles,
     });
-  }, [route.polyline, completedDistanceMiles, youPosition]);
+  }, [polyline, completedDistanceMiles, youPosition]);
 
   const allPoints = useMemo(() => {
     const points = [...route.polyline, [you.lng, you.lat] as [number, number]];
@@ -123,11 +134,11 @@ function SvgFallbackMap(routeMap: RouteMapProps) {
         <path
           d={`M ${remainingPath}`}
           fill="none"
-          stroke="#475569"
+          stroke="#2563eb"
           strokeWidth="4"
           strokeLinecap="round"
-          strokeDasharray="8 6"
-          opacity="0.85"
+          strokeDasharray="6 4"
+          opacity="0.95"
         />
       ) : null}
       <circle cx={startX} cy={startY} r="6" fill="#22c55e" />
@@ -158,11 +169,12 @@ function MapboxMap({
   const readyRef = useRef(false);
 
   const mapView = useMemo(() => {
-    const { traveled, remaining } = splitRoutePolyline(route.polyline, completedDistanceMiles);
+    const polyline = normalizedPolyline(route);
+    const { traveled, remaining } = splitRoutePolyline(polyline, completedDistanceMiles);
     const you =
       youPosition ??
       resolveYouAreHere({
-        polyline: route.polyline,
+        polyline,
         completedDistanceMiles,
       });
     return { traveled, remaining, you };
@@ -210,9 +222,10 @@ function MapboxMap({
           type: "line",
           source: "route-remaining",
           paint: {
-            "line-color": "#475569",
-            "line-width": isCockpit ? 5 : 4,
-            "line-dasharray": [2, 2],
+            "line-color": "#2563eb",
+            "line-width": isCockpit ? 6 : 5,
+            "line-opacity": 0.95,
+            "line-dasharray": [2, 1.4],
           },
         });
         map.addLayer({
@@ -394,7 +407,7 @@ export function RouteMap(props: RouteMapProps) {
   const you =
     props.youPosition ??
     resolveYouAreHere({
-      polyline: props.route.polyline,
+      polyline: normalizedPolyline(props.route),
       completedDistanceMiles: props.completedDistanceMiles ?? 0,
     });
 

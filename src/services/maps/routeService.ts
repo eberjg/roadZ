@@ -79,6 +79,18 @@ function interpolatePolyline(
   return coordinates;
 }
 
+function ensurePolyline(
+  coordinates: [number, number][] | undefined,
+  start: { lng: number; lat: number },
+  end: { lng: number; lat: number },
+): [number, number][] {
+  if (coordinates && coordinates.length >= 2) {
+    return coordinates;
+  }
+  // Safety: never return an empty path; fallback keeps map on-route.
+  return interpolatePolyline(start, end);
+}
+
 function getFallbackCoordinates(place: string): { lng: number; lat: number; label: string } {
   const zipKey = resolvePlaceKey(place);
   const known = ZIP_COORDINATES[zipKey];
@@ -138,7 +150,7 @@ async function buildMapboxRoute(startPlace: string, destinationPlace: string): P
     distanceMiles,
     durationSeconds: Math.round(driving.durationSeconds),
     etaLabel: formatDriveTime(driving.durationSeconds / 3600),
-    polyline: driving.coordinates,
+    polyline: ensurePolyline(driving.coordinates, start, end),
     start: { lng: start.lng, lat: start.lat, label: start.label },
     end: { lng: end.lng, lat: end.lat, label: end.label },
     source: "mapbox",
