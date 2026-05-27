@@ -1,3 +1,4 @@
+import { defaultPlanningFillGallons } from "./tankCapacity";
 import { resolvePlanningFillGallons, resolveTankCapacityGallons } from "./planningFuel";
 import { fallbackByFuelType, findDatabaseMatch } from "./vehicleDatabase";
 import type { VehicleEstimate, VehicleProfile } from "./types";
@@ -79,6 +80,28 @@ export function estimateVehicle(profile: VehicleProfile): VehicleEstimate {
     isElectric,
     matchedDatabaseId: match?.id ?? null,
     epaVerified: false,
+  };
+}
+
+/** When EPA has no trim list for this make/model/year, use database or class defaults. */
+export function applySmartVehicleEstimate(profile: VehicleProfile): VehicleProfile {
+  const match = findDatabaseMatch(profile);
+  const entry = match ?? fallbackByFuelType(profile.fuelType, profile.year);
+  const tankCapacityGallons = entry.tankGallons;
+  const planningFillGallons =
+    profile.planningFillGallons ?? defaultPlanningFillGallons(tankCapacityGallons);
+
+  return {
+    ...profile,
+    epaVehicleId: undefined,
+    trimLabel: match ? `${entry.model} (estimate)` : "Smart estimate",
+    highwayMpgOverride: entry.highwayMpg,
+    cityMpgOverride: entry.cityMpg,
+    combinedMpgOverride: Math.round((entry.cityMpg + entry.highwayMpg) / 2),
+    tankCapacityGallons,
+    planningFillGallons,
+    tankGallonsOverride: planningFillGallons,
+    profileComplete: true,
   };
 }
 

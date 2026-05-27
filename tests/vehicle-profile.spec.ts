@@ -52,6 +52,27 @@ test.describe("Vehicle profile wizard", () => {
     expect(payload.makes).toContain("Ford");
   });
 
+  test("uses smart estimate when EPA returns no trims", async ({ page }) => {
+    await page.route("**/api/vehicles/catalog?step=trims*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ trims: [], source: "epa-live" }),
+      });
+    });
+
+    await expect(page.getByTestId("vehicle-profile-wizard")).toBeVisible();
+    await page.getByTestId("wizard-vehicle-make").selectOption("Bentley");
+    await page.getByTestId("wizard-vehicle-model").selectOption({ label: "Azure" });
+    await page.getByTestId("wizard-vehicle-year").selectOption("2021");
+
+    await expect(page.getByTestId("wizard-vehicle-trim")).toContainText("smart estimate", {
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("vehicle-trim-notice")).toBeVisible();
+    await expect(page.getByTestId("vehicle-estimate-mpg")).toBeVisible();
+  });
+
   test("trip planner shows vehicle form with EPA fields", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("rc_onboarding_complete", "true");

@@ -5,7 +5,10 @@ import { ui } from "@/components/ui/theme";
 import { pickDefaultTrim } from "@/services/vehicle/pickDefaultTrim";
 import { mapEpaDrivetrain, mapEpaFuelType } from "@/services/vehicle/epaMapper";
 import { defaultPlanningFillGallons } from "@/services/vehicle/tankCapacity";
-import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
+import {
+  applySmartVehicleEstimate,
+  estimateVehicle,
+} from "@/services/vehicle/vehicleEstimator";
 import type { VehicleProfile } from "@/services/vehicle/types";
 
 type TrimOption = { id: string; label: string };
@@ -48,6 +51,7 @@ export function VehicleForm({
   const [trims, setTrims] = useState<TrimOption[]>([]);
   const [modelFilter, setModelFilter] = useState("");
   const [loading, setLoading] = useState<"models" | "years" | "trims" | "detail" | null>(null);
+  const [trimNotice, setTrimNotice] = useState<string | null>(null);
 
   const modelsLoadedFor = useRef<string | null>(null);
   const yearsLoadedFor = useRef<string | null>(null);
@@ -165,17 +169,25 @@ export function VehicleForm({
       return;
     }
     trimsLoadedFor.current = key;
+    setTrimNotice(null);
     setLoading("trims");
     void fetchCatalog<{ trims: TrimOption[] }>(
       `step=trims&make=${encodeURIComponent(value.make)}&model=${encodeURIComponent(value.model)}&year=${value.year}`,
     )
       .then((payload) => {
         setTrims(payload.trims);
+        const current = profileRef.current;
+        if (payload.trims.length === 0) {
+          trimAppliedId.current = null;
+          setTrimNotice("EPA has no trim list for this car — using smart estimate.");
+          onChange(applySmartVehicleEstimate(current));
+          return;
+        }
+
         const defaultTrim = pickDefaultTrim(payload.trims);
         if (defaultTrim) {
-          const saved = profileRef.current.epaVehicleId;
-          const savedStillValid =
-            saved && payload.trims.some((t) => t.id === saved);
+          const saved = current.epaVehicleId;
+          const savedStillValid = saved && payload.trims.some((t) => t.id === saved);
           if (savedStillValid) {
             trimAppliedId.current = saved ?? null;
           } else {
@@ -183,8 +195,14 @@ export function VehicleForm({
           }
         }
       })
+      .catch(() => {
+        trimsLoadedFor.current = null;
+        setTrims([]);
+        setTrimNotice("Could not load EPA trims — using smart estimate.");
+        onChange(applySmartVehicleEstimate(profileRef.current));
+      })
       .finally(() => setLoading(null));
-  }, [value.make, value.model, value.year, applyTrim]);
+  }, [value.make, value.model, value.year, applyTrim, onChange]);
 
   const estimate = estimateVehicle(value);
   const costPer100 =
@@ -268,6 +286,8 @@ export function VehicleForm({
                 disabled={loading === "years"}
                 onChange={(e) => {
                   trimsLoadedFor.current = null;
+                  setTrims([]);
+                  setTrimNotice(null);
                   onChange({
                     ...value,
                     year: Number(e.target.value),
@@ -304,6 +324,9 @@ export function VehicleForm({
                 disabled={loading === "models"}
                 onChange={(e) => {
                   yearsLoadedFor.current = null;
+                  trimsLoadedFor.current = null;
+                  setTrims([]);
+                  setTrimNotice(null);
                   onChange({
                     ...value,
                     model: e.target.value,
@@ -351,13 +374,24 @@ export function VehicleForm({
                 }}
                 className={ui.input}
               >
-                <option value="">{trims.length ? "Select engine trim" : "Loading…"}</option>
+                <option value="">
+                  {loading === "trims" || loading === "detail"
+                    ? "Loading trims…"
+                    : trims.length > 0
+                      ? "Select engine trim"
+                      : "No EPA trim — smart estimate"}
+                </option>
                 {trims.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.label}
                   </option>
                 ))}
               </select>
+              {trimNotice ? (
+                <p data-testid="vehicle-trim-notice" className="mt-1 text-[11px] text-amber-200/90">
+                  {trimNotice}
+                </p>
+              ) : null}
             </Field>
           </div>
 

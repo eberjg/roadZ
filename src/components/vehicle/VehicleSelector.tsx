@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "@/components/ui/theme";
-import { estimateVehicle } from "@/services/vehicle/vehicleEstimator";
+import {
+  applySmartVehicleEstimate,
+  estimateVehicle,
+} from "@/services/vehicle/vehicleEstimator";
 import { mapEpaDrivetrain, mapEpaFuelType } from "@/services/vehicle/epaMapper";
 import type { VehicleProfile } from "@/services/vehicle/types";
 import { MPGEstimateCard } from "./MPGEstimateCard";
@@ -192,6 +195,13 @@ export function VehicleSelector({
           return;
         }
 
+        if (payload.trims.length === 0) {
+          trimAppliedId.current = null;
+          setCatalogError("EPA has no trim list for this car — using smart estimate.");
+          onChange(applySmartVehicleEstimate(current));
+          return;
+        }
+
         if (
           current.epaVehicleId &&
           payload.trims.some((trim) => trim.id === current.epaVehicleId)
@@ -203,11 +213,13 @@ export function VehicleSelector({
         trimAppliedId.current = null;
       })
       .catch(() => {
+        trimsLoadedFor.current = null;
         setTrims([]);
-        setCatalogError("No EPA trims — using smart estimate.");
+        setCatalogError("Could not load EPA trims — using smart estimate.");
+        onChange(applySmartVehicleEstimate(profileRef.current));
       })
       .finally(() => setLoading(null));
-  }, [value.make, value.model, value.year, applyTrim]);
+  }, [value.make, value.model, value.year, applyTrim, onChange]);
 
   function clearTrimSelection() {
     trimAppliedId.current = null;
@@ -351,7 +363,11 @@ export function VehicleSelector({
             className={ui.input}
           >
             <option value="">
-              {trims.length === 0 ? "Smart estimate" : "Select trim"}
+              {loading === "trims" || loading === "detail"
+                ? "Loading trims…"
+                : trims.length > 0
+                  ? "Select trim"
+                  : "No EPA trim — smart estimate"}
             </option>
             {trims.map((trim) => (
               <option key={trim.id} value={trim.id}>
